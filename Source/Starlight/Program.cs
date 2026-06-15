@@ -36,10 +36,10 @@ internal static class Program
         [ConsoleThemeStyle.Boolean] = "\e[38;5;0027m",
         [ConsoleThemeStyle.Scalar] = "\e[38;5;0085m",
         [ConsoleThemeStyle.LevelVerbose] = "\e[38;5;0007m",
-        [ConsoleThemeStyle.LevelDebug] = "\e[38;5;0007m",
-        [ConsoleThemeStyle.LevelInformation] = "\e[38;5;0015m",
-        [ConsoleThemeStyle.LevelWarning] = "\e[38;5;0011m",
-        [ConsoleThemeStyle.LevelError] = "\e[38;5;0196m",
+        [ConsoleThemeStyle.LevelDebug] = "\e[38;5;218m", 
+        [ConsoleThemeStyle.LevelInformation] = "\e[38;5;120m",
+        [ConsoleThemeStyle.LevelWarning] = "\e[38;5;216m",
+        [ConsoleThemeStyle.LevelError] = "\e[38;5;210m",
         [ConsoleThemeStyle.LevelFatal] = "\e[38;5;0015m\e[48;5;0196m"
     });
     
