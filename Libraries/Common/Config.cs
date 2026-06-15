@@ -13,6 +13,7 @@ public static class Config
     public static StarlightConfig Instance { get; private set; } = new();
 
     public static LogEventLevel LogLevel => Instance.LogLevel;
+    public static ExternalResources Resources => Instance.Resources;
     public static ServerConfig Server => Instance.Server;
 
     public static void Load(string path = "config.json")
@@ -53,7 +54,13 @@ public sealed class StarlightConfig
 {
     [JsonConverter(typeof(JsonStringEnumConverter<LogEventLevel>))]
     public LogEventLevel LogLevel { get; set; } = LogEventLevel.Information;
+    public ExternalResources Resources { get; set; } = new();
     public ServerConfig Server { get; set; } = new();
+}
+
+public sealed class ExternalResources
+{
+    public string ResourcesPath { get; set; } = "./resources.zip";
 }
 
 public sealed class ServerConfig
