@@ -1,4 +1,4 @@
-﻿using Serilog.Core;
+using Serilog.Core;
 
 #pragma warning disable CA1050
 public static class Debug 
