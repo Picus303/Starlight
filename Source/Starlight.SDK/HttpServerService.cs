@@ -13,6 +13,8 @@ public sealed class HttpServerService : BackgroundService
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddSerilog();
+        
+        // NOTE: If you wish to use SSL, do so behind a reverse proxy.
         builder.WebHost.UseUrls($"http://{Config.Server.Http.BindAddress}:{Config.Server.Http.BindPort}");
 
         var app = builder.Build();
