@@ -73,7 +73,6 @@ public sealed class ServerConfig
 
 public sealed class SqliteConfig
 {
-    public string Path { get; set; } = "./data/starlight.db";
     public bool CreateIfMissing { get; set; } = true;
     public bool UseWal { get; set; } = true;
     public string Synchronous { get; set; } = "NORMAL";

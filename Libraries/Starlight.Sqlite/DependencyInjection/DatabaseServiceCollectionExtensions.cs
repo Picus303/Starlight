@@ -25,14 +25,10 @@ public static class DatabaseServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddStarlightDatabase(
-        this IServiceCollection services,
-        SqliteConfig config,
-        params Assembly[] modelAssemblies
-    )
+    public static IServiceCollection AddStarlightDatabase(this IServiceCollection services, string path, SqliteConfig config, params Assembly[] modelAssemblies)
     {
         return services.AddStarlightDatabase(options => {
-            options.Path = config.Path;
+            options.Path = path;
             options.CreateIfMissing = config.CreateIfMissing;
             options.UseWal = config.UseWal;
             options.Synchronous = config.Synchronous;
