@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Starlight.Common.Config;
+using Starlight.Common;
 using Starlight.Kcp;
 
 namespace Starlight.Game;
@@ -18,7 +18,7 @@ public sealed class GateServerService(
                 Config.Server.Game.BindPort,
                 handler);
 
-            logger.LogInformation("Starting GameServer at {0}:{1}",
+            logger.LogInformation("Starting GameServer at {Address}:{Port}",
                 Config.Server.Game.BindAddress,
                 Config.Server.Game.BindPort);
             
@@ -31,27 +31,20 @@ public sealed class GateServerService(
     }
 }
 
-public sealed class GateServerHandler : IKcpServerHandler
+public sealed class GateServerHandler(ILogger logger) : IKcpServerHandler
 {
-    private readonly ILogger _logger;
-
-    public GateServerHandler(ILogger logger)
-    {
-        _logger = logger;
-    }
-
     public void OnConnected(KcpConnection conn)
     {
-        _logger.LogInformation("Client connected: {Remote} (conv={Conv})", conn.Remote, conn.Conv);
+        logger.LogInformation("Client connected: {Remote} (conv={Conv})", conn.Remote, conn.Conv);
     }
 
     public void OnDisconnected(KcpConnection conn)
     {
-        _logger.LogInformation("Client disconnected: {Remote} (conv={Conv})", conn.Remote, conn.Conv);
+        logger.LogInformation("Client disconnected: {Remote} (conv={Conv})", conn.Remote, conn.Conv);
     }
 
     public void OnReceive(KcpConnection conn, byte[] data)
     {
-        _logger.LogDebug("Received {Length} bytes from {Remote}", data.Length, conn.Remote);
+        logger.LogDebug("Received {Length} bytes from {Remote}", data.Length, conn.Remote);
     }
 }
