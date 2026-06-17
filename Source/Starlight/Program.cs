@@ -1,7 +1,8 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Starlight.Common;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -78,7 +79,9 @@ internal static class Program
 
         try
         {
-            var builder = Host.CreateApplicationBuilder(args);
+            var builder = WebApplication.CreateBuilder(args);
+
+            builder.WebHost.UseUrls($"http://{Config.Instance.Server.Http.BindAddress}:{Config.Instance.Server.Http.BindPort}");
 
             builder.Services
                 .AddSerilog()
@@ -95,6 +98,7 @@ internal static class Program
 
             // Prepare the application.
             var app = builder.Build();
+            app.MapSdkServer();
 
             StartTime.Stop();
             Log.Information("Done! Finished starting in {Elapsed}ms.", StartTime.ElapsedMilliseconds);
