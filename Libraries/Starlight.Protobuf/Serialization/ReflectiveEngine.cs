@@ -45,7 +45,7 @@ public static class ReflectiveEngine
             return tag + CodedOutputStream.ComputeLengthSize(s) + s;
         }
 
-        return tag + ValueSize(f.Kind, value!);
+        return tag + ValueSize(f.Kind, EncodeWire(f, value!));
     }
 
     private static int RepeatedSize(MessageDescriptor desc, object msg, FieldDescriptor f)
@@ -135,7 +135,7 @@ public static class ReflectiveEngine
         }
 
         output.WriteTag(f.Number, WireTypeOf(f.Kind));
-        WriteValue(output, f.Kind, value!);
+        WriteValue(output, f.Kind, EncodeWire(f, value!));
     }
 
     private static void WriteRepeated(MessageDescriptor desc, object msg, FieldDescriptor f, CodedOutputStream output)
@@ -277,7 +277,7 @@ public static class ReflectiveEngine
                 }
                 else
                 {
-                    var value = ReadValue(input, f.Kind);
+                    var value = DecodeWire(f, ReadValue(input, f.Kind));
                     if (f.InOneof) desc.SetOneof(msg, f, value);
                     else desc.SetValue(msg, f, value);
                 }
@@ -445,4 +445,30 @@ public static class ReflectiveEngine
     /// <summary>Normalizes a CLR enum element to its int wire form; passes others through.</summary>
     private static object Norm(ProtoKind kind, object? v) =>
         kind == ProtoKind.Enum ? Convert.ToInt32(v) : v!;
+
+    // ---- field transforms (single scalar integer obfuscation) ---------------
+
+    private static object EncodeWire(FieldDescriptor f, object value) =>
+        f.Transform is null ? value : FromLong(f.Kind, f.Transform.Encode(ToLong(f.Kind, value)));
+
+    private static object DecodeWire(FieldDescriptor f, object value) =>
+        f.Transform is null ? value : FromLong(f.Kind, f.Transform.Decode(ToLong(f.Kind, value)));
+
+    private static long ToLong(ProtoKind kind, object v) => kind switch
+    {
+        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => (int) v,
+        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => (long) v,
+        ProtoKind.UInt32 or ProtoKind.Fixed32 => (uint) v,
+        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((long) (ulong) v),
+        _ => throw new InvalidOperationException($"Transform not supported for kind: {kind}"),
+    };
+
+    private static object FromLong(ProtoKind kind, long v) => kind switch
+    {
+        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => unchecked((int) v),
+        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => v,
+        ProtoKind.UInt32 or ProtoKind.Fixed32 => unchecked((uint) v),
+        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((ulong) v),
+        _ => throw new InvalidOperationException($"Transform not supported for kind: {kind}"),
+    };
 }

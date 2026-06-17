@@ -54,7 +54,8 @@ public sealed class FieldDescriptor
         ProtoKind kind, FieldRule rule,
         string? oneofName = null,
         ProtoKind keyKind = ProtoKind.Int32,
-        Func<MessageDescriptor>? messageRef = null)
+        Func<MessageDescriptor>? messageRef = null,
+        FieldTransform? transform = null)
     {
         Name = name;
         PropertyName = propertyName;
@@ -66,6 +67,7 @@ public sealed class FieldDescriptor
         OneofName = oneofName;
         KeyKind = keyKind;
         MessageRef = messageRef;
+        Transform = transform;
     }
 
     /// <summary>Canonical proto field name.</summary>
@@ -93,6 +95,9 @@ public sealed class FieldDescriptor
 
     /// <summary>Nested message descriptor for message / map-value-message / repeated-message fields.</summary>
     public Func<MessageDescriptor>? MessageRef { get; }
+
+    /// <summary>Wire-value obfuscation for a single scalar integer field, or <c>null</c> if none.</summary>
+    public FieldTransform? Transform { get; }
 
     // -- resolved reflection accessors (compiled POCOs only) ------------------
     internal PropertyInfo? Property;
