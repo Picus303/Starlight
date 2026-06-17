@@ -9,7 +9,8 @@ namespace Starlight.Protobuf.Registry;
 /// </summary>
 public static class ProtocolHelper
 {
-    private static IProtocolRegistryProvider? _default;
+    private static Lazy<IProtocolRegistryProvider> _default = new(
+        () => new ProtocolRegistryProvider(DiscoverRegistries()));
 
     /// <summary>
     /// The process-wide provider. Reads lazily by scanning loaded assemblies;
@@ -18,8 +19,8 @@ public static class ProtocolHelper
     /// </summary>
     public static IProtocolRegistryProvider Default
     {
-        get => _default ??= new ProtocolRegistryProvider(DiscoverRegistries());
-        set => _default = value;
+        get => _default.Value;
+        set => _default = new Lazy<IProtocolRegistryProvider>(value);
     }
 
     /// <inheritdoc cref="IProtocolRegistryProvider.ResolveByFirstPacket"/>

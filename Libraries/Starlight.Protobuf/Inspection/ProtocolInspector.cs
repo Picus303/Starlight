@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -10,9 +11,10 @@ namespace Starlight.Protobuf.Inspection;
 
 /// <summary>
 /// Renders a message as JSON for traffic inspection: known properties plus any
-/// unmatched/obfuscated wire fields captured during deserialization. This is a
-/// reflection-based, off-hot-path tool for the traffic visualizer, not part of
-/// the serialization fast path.
+/// unmatched/obfuscated wire fields captured during deserialization. Used by the
+/// traffic visualizer, which can run per-packet on a live server, so the
+/// reflection cost of property discovery is cached per type. This is separate
+/// from the serialization fast path.
 /// </summary>
 public static class ProtocolInspector
 {
@@ -53,13 +55,17 @@ public static class ProtocolInspector
         writer.WriteEndObject();
     }
 
+    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> PocoProperties = new();
+
     private static void WritePocoFields(Utf8JsonWriter writer, IMessage message)
     {
-        foreach (var prop in message.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
-        {
-            if (prop.Name == nameof(IMessage.UnknownFields)) continue;
-            if (prop.GetIndexParameters().Length > 0) continue;
+        var props = PocoProperties.GetOrAdd(message.GetType(), static type =>
+            type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.Name != nameof(IMessage.UnknownFields) && p.GetIndexParameters().Length == 0)
+                .ToArray());
 
+        foreach (var prop in props)
+        {
             writer.WritePropertyName(CamelCase(prop.Name));
             WriteValue(writer, prop.GetValue(message));
         }
@@ -135,6 +141,18 @@ public static class ProtocolInspector
             case Enum e:
                 writer.WriteStringValue(e.ToString());
                 break;
+            case sbyte sb:
+                writer.WriteNumberValue(sb);
+                break;
+            case byte by:
+                writer.WriteNumberValue(by);
+                break;
+            case short sh:
+                writer.WriteNumberValue(sh);
+                break;
+            case ushort us:
+                writer.WriteNumberValue(us);
+                break;
             case int i:
                 writer.WriteNumberValue(i);
                 break;
@@ -152,6 +170,9 @@ public static class ProtocolInspector
                 break;
             case double d:
                 writer.WriteNumberValue(d);
+                break;
+            case decimal dec:
+                writer.WriteNumberValue(dec);
                 break;
             case IDictionary dict:
                 writer.WriteStartObject();
