@@ -17,8 +17,13 @@ public sealed class ProtocolRegistryProvider : IProtocolRegistryProvider
 
         foreach (var registry in registries)
         {
-            // Last registration wins per version; a duplicate version is a build
-            // mistake, but staying deterministic beats throwing during startup scan.
+            // A duplicate version is a build/deploy misconfiguration. Discovery order
+            // (AppDomain.GetAssemblies / GetTypes) is non-deterministic, so silently
+            // keeping one would pick a different winner per run — fail loud instead.
+            if (_byVersion.TryGetValue(registry.Version, out var duplicate))
+                throw new InvalidOperationException(
+                    $"Duplicate protocol registry version '{registry.Version}': " +
+                    $"'{duplicate.GetType().FullName}' and '{registry.GetType().FullName}'.");
             _byVersion[registry.Version] = registry;
 
             foreach (var cmdId in registry.KnownFirst)

@@ -64,6 +64,19 @@ public sealed class VersionDetectionTests
     }
 
     [Fact]
+    public void DuplicateVersion_Throws_WithBothTypesNamed()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            new ProtocolRegistryProvider(
+            [
+                new FakeRegistry("V66", 1),
+                new FakeRegistry("V66", 2),
+            ]));
+
+        Assert.Contains("V66", ex.Message);
+    }
+
+    [Fact]
     public void AddStarlightProtocol_RegistersResolvableSingletonProvider()
     {
         var services = new ServiceCollection();
