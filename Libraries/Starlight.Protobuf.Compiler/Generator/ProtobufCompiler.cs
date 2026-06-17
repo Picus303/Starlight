@@ -98,15 +98,26 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         if (protos.IsDefaultOrEmpty) return;
 
         var baseFiles = protos.Where(p => p.ResolvedRole == "Base").ToList();
+        var referenceFiles = protos.Where(p => p.ResolvedRole == "Reference").ToList();
         var versionFiles = protos.Where(p => p.ResolvedRole == "Version").ToList();
         var independentFiles = protos.Where(p => p.ResolvedRole == "Independent").ToList();
+        // Role "Import" is intentionally unhandled: such protos exist in `protos`
+        // only so other files' `import` directives resolve (e.g. a version project
+        // links extra.proto for its custom option extensions). Never parsed as a
+        // base, never correlated, never emitted.
 
-        // --- Base: parse + emit POCOs ---------------------------------------
-        var baseSet = baseFiles.Count > 0 ? Parse(ctx, baseFiles, protos) : null;
+        // --- Base: parse for correlation; emit POCOs only when this compilation
+        //     owns the base. A version project links the base (and extra) protos
+        //     as "Reference" so its messages correlate by name and its imports
+        //     resolve, without re-emitting the canonical POCOs into every
+        //     per-version assembly. The POCOs live once, in the Base project. ---
+        var baseInput = baseFiles.Concat(referenceFiles).ToList();
+        var ownsBase = baseFiles.Count > 0;
+        var baseSet = baseInput.Count > 0 ? Parse(ctx, baseInput, protos) : null;
         var baseNs = "Generated";
         var baseByName = new Dictionary<string, DescriptorProto>();
         CodeEmitter.Resolver baseResolver = _ => null;
-        var cmdIds = ScanCmdIds(baseFiles.Concat(versionFiles));
+        var cmdIds = ScanCmdIds(baseInput.Concat(versionFiles));
         var transforms = CodeEmitter.ScanTransforms(protos.Select(p => p.Content));
 
         if (baseSet is not null)
@@ -116,23 +127,26 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             foreach (var msg in baseSet.Files.SelectMany(f => f.MessageTypes))
                 baseByName[msg.Name] = msg;
 
-            ValidateNames(ctx, baseSet.Files.SelectMany(f => f.MessageTypes),
-                baseSet.Files.SelectMany(f => f.EnumTypes), cmdIds);
-
-            foreach (var file in baseSet.Files)
+            if (ownsBase)
             {
-                if (file.MessageTypes.Count == 0 && file.EnumTypes.Count == 0) continue;
+                ValidateNames(ctx, baseSet.Files.SelectMany(f => f.MessageTypes),
+                    baseSet.Files.SelectMany(f => f.EnumTypes), cmdIds);
 
-                var body = new StringBuilder();
-                foreach (var e in file.EnumTypes)
-                    EmitTopLevelEnum(body, e);
-                foreach (var msg in file.MessageTypes)
+                foreach (var file in baseSet.Files)
                 {
-                    CodeEmitter.EmitPoco(body, msg, baseNs, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, baseResolver);
-                    body.AppendLine();
-                }
+                    if (file.MessageTypes.Count == 0 && file.EnumTypes.Count == 0) continue;
 
-                ctx.AddSource($"{Stem(file.Name)}.Poco.g.cs", Wrap(baseNs, body.ToString()));
+                    var body = new StringBuilder();
+                    foreach (var e in file.EnumTypes)
+                        EmitTopLevelEnum(body, e);
+                    foreach (var msg in file.MessageTypes)
+                    {
+                        CodeEmitter.EmitPoco(body, msg, baseNs, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, baseResolver);
+                        body.AppendLine();
+                    }
+
+                    ctx.AddSource($"{Stem(file.Name)}.Poco.g.cs", Wrap(baseNs, body.ToString()));
+                }
             }
         }
 

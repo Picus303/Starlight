@@ -1,4 +1,4 @@
-using Common.Protocol.Proto;
+using Starlight.Game.Protocol;
 using Starlight.Protobuf.Core;
 using Starlight.Protobuf.Fixtures;
 using Starlight.Protobuf.Fixtures.V99;
@@ -125,7 +125,7 @@ public sealed class CoverageSerializerTests
         Assert.Equal(123, restored.ChoiceInt);
     }
 
-    // ---- version-independent (extra.proto -> Common.Protocol.Proto) ---------
+    // ---- version-independent (extra.proto -> Starlight.Game.Protocol) -------
 
     [Fact]
     public void Independent_PacketHead_RoundTrips()

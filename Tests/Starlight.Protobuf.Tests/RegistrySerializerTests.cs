@@ -16,56 +16,46 @@ public sealed class RegistrySerializerTests
 {
     private static readonly V66ProtocolRegistry Registry = new();
 
+    // Cmd ids are a per-version concept and live on the registry, not the
+    // canonical base POCO. The base POCO is compiled with no version in scope.
+    private static readonly int GetPlayerTokenReqCmdId = Registry.GetCmdId(new GetPlayerTokenReq());
+    private static readonly int PlayerEnterSceneNotifyCmdId = Registry.GetCmdId(new PlayerEnterSceneNotify());
+
     [Fact]
     public void Serialize_UsesVersionFieldNumbers_NotBaseStructuralOnes()
     {
-        // In V66, NCNPDMHMHGA.uid is wire field 10 -> tag (10<<3)|0 = 0x50.
-        var message = new NCNPDMHMHGA { Uid = 150 };
+        // In V66, GetPlayerTokenReq.uid is wire field 4 (the base structural field
+        // is 14) -> tag (4<<3)|0 = 0x20.
+        var message = new GetPlayerTokenReq { Uid = 150 };
 
         var bytes = Registry.Serialize(message);
 
-        byte[] expected = [0x50, 0x96, 0x01]; // tag 0x50, value 150 (varint 0x96 0x01)
+        byte[] expected = [0x20, 0x96, 0x01]; // tag 0x20, value 150 (varint 0x96 0x01)
         Assert.Equal(expected, bytes);
     }
 
     [Fact]
     public void Serialize_OmitsProto3DefaultValues()
     {
-        var bytes = Registry.Serialize(new NCNPDMHMHGA());
+        var bytes = Registry.Serialize(new GetPlayerTokenReq());
         Assert.Empty(bytes);
     }
 
     [Fact]
-    public void RoundTrip_Map_PreservesEntries()
+    public void RoundTrip_PackedRepeatedUint32()
     {
-        var original = new NCNPDMHMHGA
-        {
-            Uid = 7,
-            OpenStateMap = { [1] = 2, [3] = 4 },
-        };
-
-        var bytes = Registry.Serialize(original);
-        var restored = (NCNPDMHMHGA) Registry.Deserialize(NCNPDMHMHGA.CmdId, new CodedInputStream(bytes));
-
-        Assert.Equal(7u, restored.Uid);
-        Assert.Equal(2u, restored.OpenStateMap[1]);
-        Assert.Equal(4u, restored.OpenStateMap[3]);
-        Assert.Equal(2, restored.OpenStateMap.Count);
-    }
-
-    [Fact]
-    public void RoundTrip_PackedRepeatedInt32()
-    {
-        // option_list is wire field 5 -> length-delimited tag (5<<3)|2 = 0x2A.
-        var original = new IEMHBJDLKHL { OptionList = { 1, 2, 3 } };
+        // scene_tag_id_list is V66 wire field 6 (base 5) -> length-delimited
+        // tag (6<<3)|2 = 0x32. proto3 packs repeated numeric scalars by default.
+        var original = new PlayerEnterSceneNotify { SceneTagIdList = { 1, 2, 3 } };
 
         var bytes = Registry.Serialize(original);
 
-        byte[] expected = [0x2A, 0x03, 0x01, 0x02, 0x03]; // tag, length 3, three 1-byte varints
+        byte[] expected = [0x32, 0x03, 0x01, 0x02, 0x03]; // tag, length 3, three 1-byte varints
         Assert.Equal(expected, bytes);
 
-        var restored = (IEMHBJDLKHL) Registry.Deserialize(IEMHBJDLKHL.CmdId, new CodedInputStream(bytes));
-        Assert.Equal(new[] { 1, 2, 3 }, restored.OptionList);
+        var restored = (PlayerEnterSceneNotify) Registry.Deserialize(
+            PlayerEnterSceneNotifyCmdId, new CodedInputStream(bytes));
+        Assert.Equal(new uint[] { 1, 2, 3 }, restored.SceneTagIdList);
     }
 
     [Fact]
@@ -87,7 +77,7 @@ public sealed class RegistrySerializerTests
         };
 
         var bytes = Registry.Serialize(original);
-        var restored = (GetPlayerTokenReq) Registry.Deserialize(GetPlayerTokenReq.CmdId, new CodedInputStream(bytes));
+        var restored = (GetPlayerTokenReq) Registry.Deserialize(GetPlayerTokenReqCmdId, new CodedInputStream(bytes));
 
         Assert.Equal(original.PsnId, restored.PsnId);
         Assert.Equal(original.Ticket, restored.Ticket);
@@ -117,7 +107,7 @@ public sealed class RegistrySerializerTests
         cos.Flush();
 
         var restored = (GetPlayerTokenReq) Registry.Deserialize(
-            GetPlayerTokenReq.CmdId, new CodedInputStream(output.ToArray()));
+            GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
         Assert.Equal("psn", restored.PsnId);
 
@@ -140,7 +130,7 @@ public sealed class RegistrySerializerTests
         cos.Flush();
 
         var restored = (GetPlayerTokenReq) Registry.Deserialize(
-            GetPlayerTokenReq.CmdId, new CodedInputStream(output.ToArray()));
+            GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
         var json = ProtocolInspector.ToJson(restored);
 
@@ -153,17 +143,15 @@ public sealed class RegistrySerializerTests
     [Fact]
     public void GetCmdId_ResolvesByMessageType()
     {
-        Assert.Equal(6301, Registry.GetCmdId(new NCNPDMHMHGA()));
         Assert.Equal(28757, Registry.GetCmdId(new GetPlayerTokenReq()));
-        Assert.Equal(29783, Registry.GetCmdId(new IEMHBJDLKHL()));
+        Assert.Equal(684, Registry.GetCmdId(new PlayerEnterSceneNotify()));
     }
 
     [Fact]
     public void Create_ConstructsCorrectPocoType()
     {
-        Assert.IsType<NCNPDMHMHGA>(Registry.Create(6301));
         Assert.IsType<GetPlayerTokenReq>(Registry.Create(28757));
-        Assert.IsType<IEMHBJDLKHL>(Registry.Create(29783));
+        Assert.IsType<PlayerEnterSceneNotify>(Registry.Create(684));
     }
 
     [Fact]

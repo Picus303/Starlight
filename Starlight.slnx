@@ -1,7 +1,10 @@
 <Solution>
     <Folder Name="/Game/">
         <Project Path="Libraries/Starlight.Game.Resources/Starlight.Game.Resources.csproj" />
-        <Project Path="Libraries/Starlight.Game.Protocol/Starlight.Game.Protocol.csproj" />
+    </Folder>
+    <Folder Name="/Game/Protocol/">
+        <Project Path="Protocol/Starlight.Game.Protocol.Base/Starlight.Game.Protocol.Base.csproj" />
+        <Project Path="Protocol/Starlight.Game.Protocol.V66/Starlight.Game.Protocol.V66.csproj" />
     </Folder>
     <Folder Name="/Libraries/">
         <Project Path="Libraries/Starlight.Common/Starlight.Common.csproj" />

@@ -25,7 +25,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\Libraries\Starlight.Protobuf\Starlight.Protobuf.csproj"/>
-        <ProjectReference Include="..\..\Libraries\Starlight.Game.Protocol\Starlight.Game.Protocol.csproj"/>
+        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.Base\Starlight.Game.Protocol.Base.csproj"/>
+        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.V66\Starlight.Game.Protocol.V66.csproj"/>
         <ProjectReference Include="..\Starlight.Protobuf.Fixtures\Starlight.Protobuf.Fixtures.csproj"/>
     </ItemGroup>
 

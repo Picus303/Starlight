@@ -18,6 +18,21 @@ public sealed class VersionDetectionTests
     private static IProtocolRegistryProvider Provider() =>
         new ProtocolRegistryProvider(ProtocolHelper.DiscoverRegistries());
 
+    // The first-packet cmd id is version-specific and lives on the registry, not
+    // the canonical base POCO.
+    private static readonly int GetPlayerTokenReqCmdId;
+
+    // Since the base/version split, V66ProtocolRegistry lives in its own assembly.
+    // Ambient discovery (AppDomain.GetAssemblies) only sees *loaded* assemblies and
+    // a version assembly loads lazily on first type use. The explicit static ctor
+    // both loads it and (by disabling beforefieldinit) runs before the first test,
+    // so even version-string-only lookups find V66.
+    static VersionDetectionTests()
+    {
+        var registry = new V66ProtocolRegistry();
+        GetPlayerTokenReqCmdId = registry.GetCmdId(new GetPlayerTokenReq());
+    }
+
     [Fact]
     public void Discover_FindsCompiledV66Registry()
     {
@@ -28,7 +43,7 @@ public sealed class VersionDetectionTests
     [Fact]
     public void ResolveByFirstPacket_ReturnsV66_ForGetPlayerTokenReq()
     {
-        var registry = Provider().ResolveByFirstPacket(GetPlayerTokenReq.CmdId);
+        var registry = Provider().ResolveByFirstPacket(GetPlayerTokenReqCmdId);
 
         Assert.NotNull(registry);
         Assert.Equal("V66", registry!.Version);
@@ -86,7 +101,7 @@ public sealed class VersionDetectionTests
         var provider = sp.GetRequiredService<IProtocolRegistryProvider>();
 
         Assert.Same(provider, sp.GetRequiredService<IProtocolRegistryProvider>());
-        Assert.Equal("V66", provider.ResolveByFirstPacket(GetPlayerTokenReq.CmdId)!.Version);
+        Assert.Equal("V66", provider.ResolveByFirstPacket(GetPlayerTokenReqCmdId)!.Version);
     }
 
     private sealed class FakeRegistry(string version, params int[] knownFirst) : ProtocolRegistry
