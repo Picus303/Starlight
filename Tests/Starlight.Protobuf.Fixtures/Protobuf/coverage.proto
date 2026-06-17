@@ -8,6 +8,8 @@ option csharp_namespace = "Starlight.Protobuf.Fixtures";
 
 package v66;
 
+import "extra.proto";
+
 message CoverageSub {
   int32 value = 1;
 }
@@ -51,6 +53,16 @@ message RemapProbe {
     int32 j = 32;
     RemapSub k = 33;
   }
+}
+
+// Version dump attaching the transform options. Covers: add+xor with fop="add"
+// and fop="xor", an invertible mask, an add-only chain, and a negative add.
+message Transformed {
+  uint32 a = 1 [add = 100, xor = 12345, fop = "add"];
+  uint64 b = 2 [xor = 999, add = 4242, fop = "xor"];
+  int32 c = 3 [mask = "(value - 7) ^ 555"];
+  uint32 d = 4 [add = 50000];
+  int32 e = 5 [add = -123, xor = 9000, fop = "add"];
 }
 
 // Field numbers shifted (101..115) from the base structural ones; same order so

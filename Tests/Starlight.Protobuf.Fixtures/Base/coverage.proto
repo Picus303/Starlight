@@ -51,6 +51,16 @@ message RemapProbe {
   }
 }
 
+// Field value transforms (add / xor / fop / mask). The base carries plain
+// structural fields; the version dump attaches the obfuscation options.
+message Transformed {
+  uint32 a = 1;
+  uint64 b = 2;
+  int32 c = 3;
+  uint32 d = 4;
+  int32 e = 5;
+}
+
 // Exhaustive proto3 scalar matrix: every scalar wire type in one message, so
 // the serializer's encoding can be byte-compared against Google.Protobuf.
 message ScalarMatrix {

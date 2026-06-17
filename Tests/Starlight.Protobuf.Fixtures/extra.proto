@@ -1,0 +1,13 @@
+// Custom FieldOptions extensions for the field value transforms. Mirrors the real
+// protocol's extra.proto so the fixtures exercise the same option-scanning path.
+
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+  optional string mask = 50001;
+  optional int32 add = 50002;
+  optional int32 xor = 50003;
+  optional string fop = 50004;
+}
