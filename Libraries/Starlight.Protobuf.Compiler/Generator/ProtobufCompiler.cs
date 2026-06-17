@@ -22,7 +22,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
     private static readonly DiagnosticDescriptor MissingMetaError = new(
         id: "SLPB002",
         title: "Missing protobuf metadata",
-        messageFormat: "A Version proto group must include _meta.proto with a package declaration",
+        messageFormat: "A {0} proto group must include *meta.proto with a package declaration",
         category: "Starlight.Protobuf",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -124,7 +124,8 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             var meta = versionSet.Files.FirstOrDefault(f => f.Name.EndsWith("meta.proto"));
             if (meta is null || string.IsNullOrEmpty(meta.Package))
             {
-                ctx.ReportDiagnostic(Diagnostic.Create(MissingMetaError, Location.None));
+                var projectDir = Path.GetDirectoryName(versionFiles[0].FullPath) ?? versionFiles[0].FullPath;
+                ctx.ReportDiagnostic(Diagnostic.Create(MissingMetaError, Location.None, projectDir));
             }
             else
             {
