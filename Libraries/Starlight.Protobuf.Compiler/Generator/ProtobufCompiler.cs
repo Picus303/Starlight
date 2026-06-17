@@ -35,6 +35,14 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor FieldTypeMismatchError = new(
+        id: "SLPB004",
+        title: "Protobuf field type mismatch",
+        messageFormat: "Field '{0}' on message '{1}' is {2} in the base but {3} in version '{4}'. The serializer derives its wire codec from the base type, so this field would (de)serialize with the wrong wire format. Reconcile the types.",
+        category: "Starlight.Protobuf",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     private const string Roof = "Starlight.Protobuf";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -152,6 +160,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                 var serializers = new StringBuilder();
                 foreach (var (vm, bm) in correlated)
                 {
+                    ValidateFieldTypes(ctx, bm, vm, version);
                     CodeEmitter.EmitSerializer(serializers, bm, vm, baseNs, baseResolver, transforms);
                     serializers.AppendLine();
                 }

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Google.Protobuf.Reflection;
 using Microsoft.CodeAnalysis;
+using FType = Google.Protobuf.Reflection.FieldDescriptorProto.Type;
+using Label = Google.Protobuf.Reflection.FieldDescriptorProto.Label;
 
 namespace Starlight.Protobuf.Compiler;
 
@@ -54,4 +56,49 @@ public sealed partial class ProtobufCompiler
             ctx.ReportDiagnostic(Diagnostic.Create(ReservedNameError, Location.None,
                 v.Kind, v.ProtoName, v.CsName, v.Reason));
     }
+
+    /// <summary>
+    /// Flags base fields whose type diverges from the same-named version field. The
+    /// emitter correlates fields by name and derives the wire codec from the base
+    /// type, so a type divergence yields a serializer that reads/writes the wrong
+    /// wire format with no compile error. The rule lives in <see cref="FieldCorrelation"/>.
+    /// </summary>
+    private static void ValidateFieldTypes(SourceProductionContext ctx, DescriptorProto baseMsg, DescriptorProto versionMsg, string version)
+    {
+        foreach (var m in FieldCorrelation.Mismatches(baseMsg.Fields.Select(Shape), versionMsg.Fields.Select(Shape)))
+            ctx.ReportDiagnostic(Diagnostic.Create(FieldTypeMismatchError, Location.None,
+                m.FieldName, baseMsg.Name, m.BaseType, m.VersionType, version));
+    }
+
+    private static FieldShape Shape(FieldDescriptorProto f)
+    {
+        var repeated = f.label == Label.LabelRepeated;
+        return f.type switch
+        {
+            FType.TypeMessage => new FieldShape(f.Name, "message", repeated, CodeEmitter.Simple(f.TypeName)),
+            FType.TypeEnum => new FieldShape(f.Name, "enum", repeated, CodeEmitter.Simple(f.TypeName)),
+            FType.TypeGroup => new FieldShape(f.Name, "group", repeated, CodeEmitter.Simple(f.TypeName)),
+            _ => new FieldShape(f.Name, ProtoKeyword(f.type), repeated),
+        };
+    }
+
+    private static string ProtoKeyword(FType type) => type switch
+    {
+        FType.TypeDouble => "double",
+        FType.TypeFloat => "float",
+        FType.TypeInt64 => "int64",
+        FType.TypeUint64 => "uint64",
+        FType.TypeInt32 => "int32",
+        FType.TypeFixed64 => "fixed64",
+        FType.TypeFixed32 => "fixed32",
+        FType.TypeBool => "bool",
+        FType.TypeString => "string",
+        FType.TypeBytes => "bytes",
+        FType.TypeUint32 => "uint32",
+        FType.TypeSfixed32 => "sfixed32",
+        FType.TypeSfixed64 => "sfixed64",
+        FType.TypeSint32 => "sint32",
+        FType.TypeSint64 => "sint64",
+        _ => type.ToString(),
+    };
 }
