@@ -319,6 +319,13 @@ public static class ReflectiveEngine
             }
         }
 
+        if (f.Kind == ProtoKind.Message && value is null)
+        {
+            var nested = f.MessageRef!();
+            value = nested.Factory?.Invoke()
+                ?? throw new InvalidOperationException($"Map field '{f.Name}' message type '{nested.Name}' has no factory.");
+        }
+
         desc.PutEntry(desc.GetMap(msg, f), key, value);
     }
 
