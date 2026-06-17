@@ -21,10 +21,12 @@
     </Folder>
     <Folder Name="/Tests/">
         <Project Path="Tests/Starlight.Tests/Starlight.Tests.csproj" />
-        <Project Path="Tests/Starlight.Protobuf.Fixtures/Starlight.Protobuf.Fixtures.csproj" />
         <Project Path="Tests/Starlight.Protobuf.Tests/Starlight.Protobuf.Tests.csproj" />
-        <Project Path="Tests/Starlight.Protobuf.Compiler.Host/Starlight.Protobuf.Compiler.Host.csproj" />
+    </Folder>
+    <Folder Name="/Tests/Protobuf/">
         <Project Path="Tests/Starlight.Protobuf.Benchmarks/Starlight.Protobuf.Benchmarks.csproj" />
+        <Project Path="Tests/Starlight.Protobuf.Compiler.Host/Starlight.Protobuf.Compiler.Host.csproj" />
+        <Project Path="Tests/Starlight.Protobuf.Fixtures/Starlight.Protobuf.Fixtures.csproj" />
     </Folder>
     <Project Path="Source/Starlight/Starlight.csproj" />
 </Solution>

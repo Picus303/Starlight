@@ -27,6 +27,14 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor ReservedNameError = new(
+        id: "SLPB003",
+        title: "Reserved C# name",
+        messageFormat: "Proto {0} '{1}' generates the C# name '{2}', which {3}. Rename the proto {0}.",
+        category: "Starlight.Protobuf",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     private const string Roof = "Starlight.Protobuf";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -100,6 +108,9 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             foreach (var msg in baseSet.Files.SelectMany(f => f.MessageTypes))
                 baseByName[msg.Name] = msg;
 
+            ValidateNames(ctx, baseSet.Files.SelectMany(f => f.MessageTypes),
+                baseSet.Files.SelectMany(f => f.EnumTypes), cmdIds);
+
             foreach (var file in baseSet.Files)
             {
                 if (file.MessageTypes.Count == 0 && file.EnumTypes.Count == 0) continue;
@@ -157,6 +168,9 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             var set = Parse(ctx, new[] { file }, protos);
             var ns = NamespaceOf(set) ?? "Generated";
             var resolver = BuildResolver(set);
+
+            var own = set.Files.Where(f => f.Name == file.FileName).ToList();
+            ValidateNames(ctx, own.SelectMany(f => f.MessageTypes), own.SelectMany(f => f.EnumTypes), cmdIds);
 
             var body = new StringBuilder();
             // Emit only the file itself; imported dependencies (e.g. descriptor.proto)
