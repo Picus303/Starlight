@@ -8,6 +8,16 @@ syntax = "proto3";
 
 option csharp_namespace = "Common.Protocol.Proto";
 
+import "google/protobuf/descriptor.proto";
+
+
+extend google.protobuf.FieldOptions {
+  optional string mask = 50001;
+  optional int32 add = 50002;
+  optional int32 xor = 50003;
+  optional string fop = 50004;
+}
+
 // The packet's metadata is encoded with this message.
 message PacketHead {
   // Self explanatory

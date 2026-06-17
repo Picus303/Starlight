@@ -2,13 +2,11 @@ syntax = "proto3";
 
 option csharp_namespace = "Starlight.Game.Protocol";
 
-// CmdId: 6301
 message NCNPDMHMHGA {
   map<uint32, uint32> open_state_map = 1;
   uint32 uid = 2;
 }
 
-// CmdId: 28757
 message GetPlayerTokenReq {
   string psn_id = 1;
   string ticket = 2;
@@ -26,7 +24,22 @@ message GetPlayerTokenReq {
   uint32 uid = 14;
 }
 
-// CmdId: 29783
+message PlayerEnterSceneNotify {
+  uint32 enter_scene_token = 1;
+  bool is_first_login_enter_scene = 2;
+  uint32 target_uid = 3;
+  uint32 enter_reason = 4;
+  repeated uint32 scene_tag_id_list = 5;
+  uint32 prev_scene_id = 6;
+  uint64 scene_begin_time = 7;
+  uint32 world_level = 8;
+  uint32 world_type = 9;
+  uint32 scene_id = 10;
+  uint32 dungeon_id = 11;
+  bool is_skip_ui = 12;
+  string scene_transaction = 13;
+}
+
 message IEMHBJDLKHL {
   repeated int32 option_list = 1;
 }

@@ -4,6 +4,8 @@ option csharp_namespace = "Starlight.Game.Protocol";
 
 package v66;
 
+import "extra.proto";
+
 // CmdId: 6301
 message NCNPDMHMHGA {
   enum CmdId {
@@ -48,6 +50,31 @@ message GetPlayerTokenReq {
   uint32 MBFOBONPMCI = 7; // 0xBC
   uint32 key_id = 45; // 0xC0
   uint32 uid = 4; // 0xC4
+}
+
+// CmdId: 684
+message PlayerEnterSceneNotify {
+  enum CmdId {
+    NONE = 0;
+    CMD_ID = 684;
+  }
+  repeated uint32 scene_tag_id_list = 6; // 0x17E10
+  bool HLCPJIJJNOJ = 8; // 0x79
+  bool BIHEFFEJLBB = 1551; // 0x78
+  string scene_transaction = 205; // 0x28
+  uint32 IOHGCGCDLIA = 1911; // 0x68
+  uint32 enter_scene_token = 2 [add = 57396, xor = 8638, fop = "add"]; // 0x6C
+  uint32 FCKJJGAHHLI = 1416; // 0x70
+  uint32 PMEEMBLPPPI = 983; // 0x74
+  uint32 target_uid = 15 [add = -30529, xor = 4145, fop = "add"]; // 0x7C
+  uint32 dungeon_id = 12; // 0x80
+  uint32 FGNMNKGFDPH = 1292; // 0x84
+  uint32 scene_id = 11 [mask = "(value - 49379) ^ 11523"]; // 0x8C
+  uint32 NPFBMGOGJCL = 344; // 0x90
+  uint32 FCFEHKDMPMD = 5; // 0x94
+  uint64 scene_begin_time = 10 [xor = 27843, add = 16749, fop = "xor"]; // 0x98
+  uint32 world_level = 3; // 0xA0
+  uint32 OELFHAHNBKG = 1146; // 0xA4
 }
 
 // CmdId: 29783
