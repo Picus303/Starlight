@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115"/>
+        <PackageReference Include="xunit" Version="2.9.2"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Libraries\Starlight.Protobuf\Starlight.Protobuf.csproj"/>
+        <ProjectReference Include="..\..\Libraries\Starlight.Protobuf.Reflection\Starlight.Protobuf.Reflection.csproj"/>
+        <ProjectReference Include="..\..\Libraries\Starlight.Game.Protocol\Starlight.Game.Protocol.csproj"/>
+        <ProjectReference Include="..\Starlight.Protobuf.Fixtures\Starlight.Protobuf.Fixtures.csproj"/>
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,72 @@
+// Synthetic coverage schema (not a real game packet). Exercises proto3
+// `optional` explicit presence and `oneof` so the compiler's full proto3
+// surface is verified by the test suite.
+
+syntax = "proto3";
+
+option csharp_namespace = "Starlight.Protobuf.Fixtures";
+
+message CoverageSub {
+  int32 value = 1;
+}
+
+message Coverage {
+  optional int32 opt_int = 1;
+  optional string opt_str = 2;
+  int32 plain = 3;
+  oneof choice {
+    string choice_str = 4;
+    int32 choice_int = 5;
+    CoverageSub choice_msg = 6;
+  }
+}
+
+// Every reflective-engine branch in one message, exercised only by the remap
+// tests. Mutating its descriptor's wire numbers can't affect other messages.
+enum RemapEnum {
+  REMAP_ZERO = 0;
+  REMAP_ONE = 1;
+  REMAP_TWO = 2;
+}
+
+message RemapSub {
+  int32 n = 1;
+}
+
+message RemapProbe {
+  int32 a = 1;
+  string b = 2;
+  optional int32 c = 3;
+  repeated int32 d = 4;
+  repeated string e = 5;
+  map<int32, int32> f = 6;
+  RemapSub g = 7;
+  repeated RemapSub h = 8;
+  map<int32, RemapSub> i = 9;
+  RemapEnum en = 10;
+  repeated RemapEnum ens = 11;
+  oneof choice {
+    int32 j = 12;
+    RemapSub k = 13;
+  }
+}
+
+// Exhaustive proto3 scalar matrix: every scalar wire type in one message, so
+// the serializer's encoding can be byte-compared against Google.Protobuf.
+message ScalarMatrix {
+  int32 f_int32 = 1;
+  int64 f_int64 = 2;
+  uint32 f_uint32 = 3;
+  uint64 f_uint64 = 4;
+  sint32 f_sint32 = 5;
+  sint64 f_sint64 = 6;
+  fixed32 f_fixed32 = 7;
+  fixed64 f_fixed64 = 8;
+  sfixed32 f_sfixed32 = 9;
+  sfixed64 f_sfixed64 = 10;
+  bool f_bool = 11;
+  float f_float = 12;
+  double f_double = 13;
+  string f_string = 14;
+  bytes f_bytes = 15;
+}
