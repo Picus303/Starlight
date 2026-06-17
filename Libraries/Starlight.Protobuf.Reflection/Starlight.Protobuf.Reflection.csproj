@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Starlight.Protobuf.Reflection</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Starlight.Protobuf\Starlight.Protobuf.csproj" />
+    </ItemGroup>
+
+    <!-- Runtime .proto parsing. Reuses the same parser the compiler uses, but as a
+         normal package reference (the compiler bundles these as analyzer assets). -->
+    <ItemGroup>
+        <PackageReference Include="protobuf-net" Version="3.2.56" />
+        <!-- Aliased: protobuf-net.Reflection ships descriptor types (FileDescriptorSet,
+             DescriptorProto, ...) in the same Google.Protobuf.Reflection namespace as
+             Google.Protobuf, so they must be disambiguated via `extern alias protonet`. -->
+        <PackageReference Include="protobuf-net.Reflection" Version="3.2.52" Aliases="protonet" />
+    </ItemGroup>
+
+</Project>
