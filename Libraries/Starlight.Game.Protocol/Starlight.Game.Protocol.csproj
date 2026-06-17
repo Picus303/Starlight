@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Libraries\Starlight.Protobuf\Starlight.Protobuf.csproj" />
+      <ProjectReference Include="..\..\Libraries\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <!-- Tag each .proto with its compiler role; the generator reads SLProtoRole. -->
+    <ItemGroup>
+      <AdditionalFiles Include="Base\**\*.proto" SLProtoRole="Base" />
+      <AdditionalFiles Include="Protobuf\**\*.proto" SLProtoRole="Version" />
+      <AdditionalFiles Include="extra.proto" SLProtoRole="Independent" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="SLProtoRole" />
+    </ItemGroup>
+
+</Project>

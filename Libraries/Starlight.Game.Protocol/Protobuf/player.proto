@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option csharp_namespace = "Starlight.Game.Protocol";
+
+package v66;
+
+// CmdId: 6301
+message NCNPDMHMHGA {
+  enum CmdId {
+    NONE = 0;
+    CMD_ID = 6301;
+  }
+  map<uint32, uint32> open_state_map = 6; // 0x25B20
+  uint32 uid = 10; // 0x20
+}
+
+// CmdId: 28757
+message GetPlayerTokenReq {
+  enum CmdId {
+    NONE = 0;
+    CMD_ID = 28757;
+  }
+  string psn_id = 9; // 0x18
+  string HADOFGGLMDB = 1824; // 0x20
+  string ticket = 156; // 0x28
+  string online_id = 8; // 0x30
+  string MIPKNOMHEKL = 6; // 0x38
+  string GCNGCNFKGLE = 968; // 0x40
+  string IKIOBLOOJEO = 1026; // 0x48
+  string GEOOAGIDMBE = 1498; // 0x50
+  string DLKMJKHOIMC = 2; // 0x58
+  string auth_appid = 410; // 0x60
+  string client_rand_key = 345; // 0x68
+  string LEJILKNBCFO = 5; // 0x70
+  string birthday = 137; // 0x78
+  string account_uid = 15; // 0x80
+  string account_token = 14; // 0x88
+  string CKPJABMALEA = 11; // 0x90
+  uint32 authkey_ver = 868; // 0x98
+  uint32 platform_type = 13; // 0x9C
+  uint32 CEMIAJGCNIG = 3; // 0xA0
+  uint32 sign_type = 1605; // 0xA4
+  uint32 IOFANDNNFMK = 386; // 0xA8
+  bool is_guest = 12; // 0xAC
+  uint32 HLOIPJDIIEE = 1; // 0xB0
+  uint32 KFCBOHBPMAO = 10; // 0xB4
+  uint32 LKOFAAGFHPG = 1003; // 0xB8
+  uint32 MBFOBONPMCI = 7; // 0xBC
+  uint32 key_id = 45; // 0xC0
+  uint32 uid = 4; // 0xC4
+}
+
+// CmdId: 29783
+message IEMHBJDLKHL {
+  enum CmdId {
+    NONE = 0;
+    CMD_ID = 29783;
+  }
+  repeated int32 option_list = 5; // 0x24FD0
+  bool CFHICPLFEBP = 8; // 0x24
+  int32 OPGBPBNAJEE = 9; // 0x20
+}
