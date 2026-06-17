@@ -62,16 +62,19 @@ public static class ReservedNames
 
     /// <summary>
     /// Field property names that collide with a member the emitter synthesizes on the
-    /// same message: <c>UnknownFields</c>, the optional <c>CmdId</c> const, and per real
+    /// same message: <c>UnknownFields</c>, the optional <c>CmdId</c> const, the
+    /// <c>Serializer</c> static (version-independent messages only), and per real
     /// oneof the <c>{Name}Case</c> property, <c>Clear{Name}</c> method, and
     /// <c>{Name}OneofCase</c> enum. <paramref name="realOneofNames"/> are raw proto oneof
     /// names (Pascaled here to match emission).
     /// </summary>
     public static IReadOnlyList<NameViolation> GeneratedMemberCollisions(
-        string messageName, bool hasCmdId, IEnumerable<string> realOneofNames, IEnumerable<string> fieldNames)
+        string messageName, bool hasCmdId, IEnumerable<string> realOneofNames, IEnumerable<string> fieldNames,
+        bool selfSerializable = false)
     {
         var generated = new HashSet<string> { "UnknownFields" };
         if (hasCmdId) generated.Add("CmdId");
+        if (selfSerializable) generated.Add("Serializer");
         foreach (var oneof in realOneofNames)
         {
             var p = CodeEmitter.Pascal(oneof);

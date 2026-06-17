@@ -17,16 +17,17 @@ public sealed partial class ProtobufCompiler
     /// We still emit (the bad C# fails to compile anyway) but SLPB003 names the cause.
     /// </summary>
     private static void ValidateNames(SourceProductionContext ctx, IEnumerable<DescriptorProto> messages,
-        IEnumerable<EnumDescriptorProto> topLevelEnums, IReadOnlyDictionary<string, int> cmdIds)
+        IEnumerable<EnumDescriptorProto> topLevelEnums, IReadOnlyDictionary<string, int> cmdIds,
+        bool selfSerializable = false)
     {
         foreach (var e in topLevelEnums)
             ValidateEnum(ctx, e);
 
         foreach (var msg in messages)
-            ValidateMessage(ctx, msg, cmdIds.ContainsKey(msg.Name));
+            ValidateMessage(ctx, msg, cmdIds.ContainsKey(msg.Name), selfSerializable);
     }
 
-    private static void ValidateMessage(SourceProductionContext ctx, DescriptorProto msg, bool hasCmdId)
+    private static void ValidateMessage(SourceProductionContext ctx, DescriptorProto msg, bool hasCmdId, bool selfSerializable)
     {
         Report(ctx, ReservedNames.CheckKeyword("message", msg.Name));
 
@@ -39,7 +40,7 @@ public sealed partial class ProtobufCompiler
             .Distinct();
 
         foreach (var v in ReservedNames.GeneratedMemberCollisions(
-                     msg.Name, hasCmdId, realOneofs, msg.Fields.Select(f => f.Name)))
+                     msg.Name, hasCmdId, realOneofs, msg.Fields.Select(f => f.Name), selfSerializable))
             Report(ctx, v);
     }
 

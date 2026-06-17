@@ -152,6 +152,29 @@ public sealed class CoverageSerializerTests
     }
 
     [Fact]
+    public void Independent_PacketHead_RoundTrips_WithoutSpecifyingSerializer()
+    {
+        // Version-independent messages own their single serializer, so the
+        // argument-free extensions resolve it with no version lookup.
+        var original = new PacketHead { ClientSequenceId = 11, Flags = 6, TotalChunksCount = 4 };
+
+        var restored = new PacketHead();
+        restored.MergeFrom(original.ToByteArray());
+
+        Assert.Equal(original.ClientSequenceId, restored.ClientSequenceId);
+        Assert.Equal(original.Flags, restored.Flags);
+        Assert.Equal(original.TotalChunksCount, restored.TotalChunksCount);
+    }
+
+    [Fact]
+    public void Independent_SelfSerializer_MatchesExplicitInstance()
+    {
+        var msg = new PacketHead { ChunkId = 7 };
+        Assert.Equal(msg.ToByteArray(PacketHeadSerializer.Instance), msg.ToByteArray());
+        Assert.Same(PacketHeadSerializer.Instance, PacketHead.Serializer);
+    }
+
+    [Fact]
     public void Independent_Chunk_PropertyCollisionSuffix_RoundTrips()
     {
         // Field `chunk` collides with message `Chunk`, so the property is `Chunk_`.

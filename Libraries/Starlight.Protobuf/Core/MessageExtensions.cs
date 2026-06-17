@@ -21,4 +21,21 @@ public static class MessageExtensions
         using var input = new CodedInputStream(data);
         serializer.Deserialize(message, input);
     }
+
+    /// <summary>
+    /// Serializes <paramref name="message"/> using its own canonical serializer.
+    /// Available only for version-independent messages (<see cref="ISelfSerializable{T}"/>),
+    /// which have a single serializer; versioned messages must use the
+    /// <see cref="ToByteArray{T}(T, ISerializer{T})"/> overload.
+    /// </summary>
+    public static byte[] ToByteArray<T>(this T message) where T : ISelfSerializable<T> =>
+        message.ToByteArray(T.Serializer);
+
+    /// <summary>
+    /// Merges <paramref name="data"/> into <paramref name="message"/> using its own
+    /// canonical serializer. Available only for version-independent messages
+    /// (<see cref="ISelfSerializable{T}"/>).
+    /// </summary>
+    public static void MergeFrom<T>(this T message, byte[] data) where T : ISelfSerializable<T> =>
+        message.MergeFrom(T.Serializer, data);
 }

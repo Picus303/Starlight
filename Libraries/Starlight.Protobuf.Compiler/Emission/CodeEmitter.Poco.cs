@@ -11,10 +11,16 @@ internal static partial class CodeEmitter
 {
     // ---- POCO emission ------------------------------------------------------
 
-    public static void EmitPoco(StringBuilder sb, DescriptorProto msg, string baseNs, int? cmdId, Resolver resolve)
+    public static void EmitPoco(StringBuilder sb, DescriptorProto msg, string baseNs, int? cmdId, Resolver resolve, bool selfSerializable = false)
     {
-        sb.AppendLine($"public sealed class {msg.Name} : global::Starlight.Protobuf.Core.IMessage<{msg.Name}>");
+        // Version-independent messages own their single serializer, so they implement
+        // ISelfSerializable<T> for the argument-free ToByteArray()/MergeFrom() path.
+        var iface = selfSerializable ? "ISelfSerializable" : "IMessage";
+        sb.AppendLine($"public sealed class {msg.Name} : global::Starlight.Protobuf.Core.{iface}<{msg.Name}>");
         sb.AppendLine("{");
+
+        if (selfSerializable)
+            sb.AppendLine($"    public static global::Starlight.Protobuf.Core.ISerializer<{msg.Name}> Serializer => {msg.Name}Serializer.Instance;").AppendLine();
 
         if (cmdId.HasValue)
             sb.AppendLine($"    public const int CmdId = {cmdId.Value};").AppendLine();

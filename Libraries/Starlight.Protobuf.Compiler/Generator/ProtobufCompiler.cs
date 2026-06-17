@@ -193,7 +193,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             var resolver = BuildResolver(set);
 
             var own = set.Files.Where(f => f.Name == file.FileName).ToList();
-            ValidateNames(ctx, own.SelectMany(f => f.MessageTypes), own.SelectMany(f => f.EnumTypes), cmdIds);
+            ValidateNames(ctx, own.SelectMany(f => f.MessageTypes), own.SelectMany(f => f.EnumTypes), cmdIds, selfSerializable: true);
 
             var body = new StringBuilder();
             // Emit only the file itself; imported dependencies (e.g. descriptor.proto)
@@ -204,7 +204,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                     EmitTopLevelEnum(body, e);
                 foreach (var msg in f.MessageTypes)
                 {
-                    CodeEmitter.EmitPoco(body, msg, ns, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, resolver);
+                    CodeEmitter.EmitPoco(body, msg, ns, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, resolver, selfSerializable: true);
                     body.AppendLine();
                     CodeEmitter.EmitSerializer(body, msg, msg, ns, resolver, transforms);
                     body.AppendLine();
