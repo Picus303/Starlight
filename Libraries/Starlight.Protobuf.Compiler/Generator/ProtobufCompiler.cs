@@ -121,7 +121,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         if (versionFiles.Count > 0)
         {
             var versionSet = Parse(ctx, versionFiles, protos);
-            var meta = versionSet.Files.FirstOrDefault(f => f.Name == "_meta.proto");
+            var meta = versionSet.Files.FirstOrDefault(f => f.Name.EndsWith("meta.proto"));
             if (meta is null || string.IsNullOrEmpty(meta.Package))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(MissingMetaError, Location.None));
