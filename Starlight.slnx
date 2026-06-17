@@ -10,7 +10,7 @@
         <Project Path="Libraries/Starlight.Kcp/Starlight.Kcp.csproj" />
     </Folder>
     <Folder Name="/Libraries/Protobuf/">
-        <Project Path="Libraries/Starlight.Protobuf.Compiler/Starlight.Protobuf.Compiler/Starlight.Protobuf.Compiler.csproj" />
+        <Project Path="Libraries/Starlight.Protobuf.Compiler/Starlight.Protobuf.Compiler.csproj" />
         <Project Path="Libraries/Starlight.Protobuf/Starlight.Protobuf.csproj" />
         <Project Path="Libraries/Starlight.Protobuf.Reflection/Starlight.Protobuf.Reflection.csproj" />
     </Folder>
