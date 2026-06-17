@@ -27,7 +27,7 @@ jobs:
         run: dotnet restore Starlight.slnx
 
       - name: Build
-        run: dotnet build Starlight.slnx --configuration Release --no-restore
+        run: dotnet build Starlight.slnx --configuration Release --no-restore -warnaserror
 
       - name: Test
         run: dotnet test Starlight.slnx --configuration Release --no-build --logger "trx;LogFileName=Starlight.Tests.trx"

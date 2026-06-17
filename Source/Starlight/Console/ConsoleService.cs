@@ -4,8 +4,7 @@ using Serilog;
 namespace Starlight.Console;
 
 public sealed class ConsoleService(
-    CommandRegistry registry,
-    IHostApplicationLifetime lifetime
+    CommandRegistry registry
 ) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
