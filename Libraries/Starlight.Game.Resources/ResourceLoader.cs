@@ -84,11 +84,14 @@ public class ZipLoader(ZipArchive archive) : IResourceLoader
             .Replace(@"\*", ".*")
             .Replace(@"\?", ".") + "$";
         var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+        var normalizedPrefix = string.IsNullOrWhiteSpace(path) ?
+            string.Empty :
+            path.Replace('\\', '/').Trim('/') + "/";
 
         lock (archive)
         {
             return archive.Entries
-                .Where(e => e.FullName.StartsWith(path) &&
+                .Where(e => e.FullName.Replace('\\', '/').StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) &&
                             regex.IsMatch(Path.GetFileName(e.FullName)))
                 .Select(e => e.FullName)
                 .ToArray();
