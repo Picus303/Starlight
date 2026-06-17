@@ -9,7 +9,7 @@ public static class MessageExtensions
     public static byte[] ToByteArray<T>(this T message, ISerializer<T> serializer) where T : IMessage
     {
         var buffer = new byte[serializer.CalculateSize(message)];
-        var output = new CodedOutputStream(buffer);
+        using var output = new CodedOutputStream(buffer);
         serializer.Serialize(message, output);
         output.CheckNoSpaceLeft();
         return buffer;
@@ -18,7 +18,7 @@ public static class MessageExtensions
     /// <summary>Merges the wire data in <paramref name="data"/> into <paramref name="message"/> using <paramref name="serializer"/>.</summary>
     public static void MergeFrom<T>(this T message, ISerializer<T> serializer, byte[] data) where T : IMessage
     {
-        var input = new CodedInputStream(data);
+        using var input = new CodedInputStream(data);
         serializer.Deserialize(message, input);
     }
 }
