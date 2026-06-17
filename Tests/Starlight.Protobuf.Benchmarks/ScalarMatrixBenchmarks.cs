@@ -3,7 +3,7 @@ using BenchmarkDotNet.Configs;
 using Google.Protobuf;
 using Starlight.Protobuf.Core;
 using Starlight.Protobuf.Fixtures;
-using Starlight.Protobuf.Fixtures.V66;
+using Starlight.Protobuf.Fixtures.V99;
 using GGoogle = Starlight.Protobuf.Benchmarks.Google;
 
 namespace Starlight.Protobuf.Benchmarks;

@@ -3,7 +3,7 @@ using Google.Protobuf;
 using Starlight.Game.Protocol.V66;
 using Starlight.Protobuf.Core;
 using Starlight.Protobuf.Benchmarks;
-using Starlight.Protobuf.Fixtures.V66;
+using Starlight.Protobuf.Fixtures.V99;
 using GGoogle = Starlight.Protobuf.Benchmarks.Google;
 
 // `--verify` (or no BenchmarkDotNet filter) prints the encoded sizes so the

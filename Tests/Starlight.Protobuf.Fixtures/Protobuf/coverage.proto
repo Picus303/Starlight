@@ -1,4 +1,4 @@
-// Version (v66) dump of the synthetic coverage schema. Field numbers are
+// Version (v99) dump of the synthetic coverage schema. Field numbers are
 // deliberately shifted from the base structural ones to prove name-match
 // correlation works through `optional` and `oneof`.
 
@@ -6,7 +6,7 @@ syntax = "proto3";
 
 option csharp_namespace = "Starlight.Protobuf.Fixtures";
 
-package v66;
+package v99;
 
 import "extra.proto";
 
