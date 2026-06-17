@@ -38,14 +38,15 @@ public static class ServiceExtensions
 
             switch (provider)
             {
-                case ProviderType.Sqlite: {
-                    connString = new SqliteConnectionStringBuilder {
-                        DataSource = connString
-                    }.ToString();
+                case ProviderType.Sqlite:
+                    {
+                        connString = new SqliteConnectionStringBuilder {
+                            DataSource = connString
+                        }.ToString();
 
-                    opts.UseSqlite(connString);
-                    break;
-                }
+                        opts.UseSqlite(connString);
+                        break;
+                    }
                 default:
                     throw new NotSupportedException($"Unsupported or missing database provider '{provider?.ToString() ?? "<null>"}'.");
             }
