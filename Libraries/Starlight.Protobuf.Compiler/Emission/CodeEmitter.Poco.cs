@@ -106,7 +106,7 @@ internal static partial class CodeEmitter
                 sb.AppendLine($"    public {cs}? {prop}");
                 sb.AppendLine("    {");
                 sb.AppendLine($"        get => {caseStore} == {f.Number} ? ({cs}?) {store} : null;");
-                sb.AppendLine($"        set {{ {store} = value; {caseStore} = {f.Number}; }}");
+                sb.AppendLine($"        set {{ {store} = value; {caseStore} = value == null ? 0 : {f.Number}; }}");
                 sb.AppendLine("    }");
             }
             else
@@ -122,7 +122,10 @@ internal static partial class CodeEmitter
                 sb.AppendLine($"    public {w.CsType} {prop}");
                 sb.AppendLine("    {");
                 sb.AppendLine($"        get => {caseStore} == {f.Number} ? ({w.CsType}) {store}! : {def};");
-                sb.AppendLine($"        set {{ {store} = value; {caseStore} = {f.Number}; }}");
+                var assign = f.type is FType.TypeString or FType.TypeBytes
+                    ? "global::Google.Protobuf.ProtoPreconditions.CheckNotNull(value, \"value\")"
+                    : "value";
+                sb.AppendLine($"        set {{ {store} = {assign}; {caseStore} = {f.Number}; }}");
                 sb.AppendLine("    }");
             }
         }
