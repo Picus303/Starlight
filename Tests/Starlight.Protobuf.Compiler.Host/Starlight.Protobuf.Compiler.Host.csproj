@@ -18,7 +18,7 @@
 
     <ItemGroup>
         <!-- Reference the generator as a plain library so we can instantiate and drive it in-process. -->
-        <ProjectReference Include="..\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler.csproj" />
+        <ProjectReference Include="..\..\Libraries\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler.csproj" />
     </ItemGroup>
 
 </Project>
