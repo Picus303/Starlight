@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
+using Google.Protobuf.Reflection;
 using FType = Google.Protobuf.Reflection.FieldDescriptorProto.Type;
 
 namespace Starlight.Protobuf.Compiler;
@@ -15,16 +14,25 @@ internal static partial class CodeEmitter
     /// An invertible integer transform applied to a field on the wire. <see cref="Ops"/>
     /// is the encode chain (real -&gt; wire), one char per step in <c>{ '+', '-', '^' }</c>,
     /// paired positionally with <see cref="Operands"/>. Decode (wire -&gt; real) applies the
-    /// inverse of each op in reverse order. An unparseable <c>mask</c> stores its raw
-    /// expression in <see cref="RawMask"/> and cannot be inverted (read returns the raw wire value).
+    /// inverse of each op in reverse order. A <c>mask</c> that <see cref="ParseMask"/> can't
+    /// invert is rejected outright (no transform) and reported as an error, so every
+    /// transform that survives here round-trips on both the fast and reflective paths.
     /// </summary>
     internal sealed class Transform
     {
         public string Ops = "";
         public long[] Operands = System.Array.Empty<long>();
-        public string? RawMask;
+    }
 
-        public bool CanDecode => RawMask is null;
+    /// <summary>A mask rejected at compile time because it cannot be inverted for decode.</summary>
+    internal sealed class MaskViolation
+    {
+        public string Message = "";
+        public string Field = "";
+        public string Mask = "";
+
+        /// <summary>True = out-of-grammar (SLPB005). False = in-grammar but structurally non-invertible (SLPB006). Both are errors.</summary>
+        public bool Invalid;
     }
 
     /// <summary>Per-message field transform lookup, keyed by message name then field (proto) name.</summary>
@@ -32,14 +40,20 @@ internal static partial class CodeEmitter
     {
         private readonly Dictionary<string, Dictionary<string, Transform>> _map;
 
-        public TransformTable(Dictionary<string, Dictionary<string, Transform>> map) => _map = map;
+        public TransformTable(Dictionary<string, Dictionary<string, Transform>> map, IReadOnlyList<MaskViolation> violations)
+        {
+            _map = map;
+            Violations = violations;
+        }
+
+        public IReadOnlyList<MaskViolation> Violations { get; }
 
         public Transform? Get(string message, string field) =>
             _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var t) ? t : null;
     }
 
     /// <summary>Integer kinds the transforms apply to. Floats, bools, strings, enums and messages are excluded.</summary>
-    private static bool IsTransformable(FType type) => type switch
+    internal static bool IsTransformable(FType type) => type switch
     {
         FType.TypeInt32 or FType.TypeInt64 or FType.TypeUint32 or FType.TypeUint64
             or FType.TypeSint32 or FType.TypeSint64 or FType.TypeFixed32 or FType.TypeFixed64
@@ -54,12 +68,6 @@ internal static partial class CodeEmitter
     {
         if (t is null) return valueExpr;
 
-        if (t.RawMask is not null)
-        {
-            var expr = Regex.Replace(t.RawMask, @"\bvalue\b", _ => $"((long)({valueExpr}))");
-            return $"unchecked(({csType})({expr}))";
-        }
-
         var inner = $"(long){valueExpr}";
         for (var i = 0; i < t.Ops.Length; i++)
             inner = $"({inner} {t.Ops[i]} {Lit(t.Operands[i])})";
@@ -69,7 +77,7 @@ internal static partial class CodeEmitter
     /// <summary>Decode expression (wire -&gt; real) wrapping <paramref name="readExpr"/>, cast to <paramref name="csType"/>.</summary>
     private static string Decode(Transform? t, string readExpr, string csType)
     {
-        if (t is null || !t.CanDecode) return readExpr;
+        if (t is null) return readExpr;
 
         var inner = $"(long){readExpr}";
         for (var i = t.Ops.Length - 1; i >= 0; i--)
@@ -81,80 +89,86 @@ internal static partial class CodeEmitter
 
     private static string Lit(long v) => $"({v.ToString(CultureInfo.InvariantCulture)}L)";
 
-    // ---- scanning -----------------------------------------------------------
+    private static long? ParseOperand(string value) =>
+        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?) null;
+
+    // ---- extraction ---------------------------------------------------------
 
     /// <summary>
-    /// Text-scans proto sources for field transform options. protobuf-net can't resolve
-    /// these custom options, so we read their literal values directly, attributing each
-    /// option-bearing field to its nearest enclosing <c>message</c>.
+    /// Reads field transform options (add / xor / fop / mask) from a parsed descriptor set,
+    /// attributing each to its declaring message through the descriptor tree (so nesting,
+    /// oneofs, comments and option braces are the parser's problem, not ours). The protocol
+    /// writes these as bare options (e.g. <c>[add = 5]</c>) that protobuf-net can't resolve to
+    /// the extra.proto extensions, so it parks each on the field's
+    /// <see cref="FieldOptions.UninterpretedOptions"/> with the literal in
+    /// <see cref="UninterpretedOption.AggregateValue"/> — which is what we read here.
     /// </summary>
-    public static TransformTable ScanTransforms(IEnumerable<string> contents)
+    public static TransformTable ReadTransforms(FileDescriptorSet set)
     {
         var map = new Dictionary<string, Dictionary<string, Transform>>();
+        var violations = new List<MaskViolation>();
 
-        var token = new Regex(
-            @"(?<open>(?:message|enum|oneof)\s+(?<oname>\w+)\s*\{)" +
-            @"|(?<close>\})" +
-            @"|(?<field>(?<fname>\w+)\s*=\s*\d+\s*\[(?<opts>[^\]]*)\])",
-            RegexOptions.Singleline);
+        foreach (var file in set.Files)
+            foreach (var msg in file.MessageTypes)
+                ReadMessageTransforms(msg, map, violations);
 
-        foreach (var content in contents)
-        {
-            var src = StripComments(content);
-            var scope = new Stack<string?>();
-
-            foreach (Match m in token.Matches(src))
-            {
-                if (m.Groups["open"].Success)
-                {
-                    var keyword = m.Value.TrimStart()[0];
-                    scope.Push(keyword == 'm' ? m.Groups["oname"].Value : null);
-                }
-                else if (m.Groups["close"].Success)
-                {
-                    if (scope.Count > 0) scope.Pop();
-                }
-                else
-                {
-                    var message = scope.FirstOrDefault(s => s != null);
-                    if (message is null) continue;
-
-                    var t = BuildTransform(m.Groups["opts"].Value);
-                    if (t is null) continue;
-
-                    if (!map.TryGetValue(message, out var fields))
-                        map[message] = fields = new Dictionary<string, Transform>();
-                    fields[m.Groups["fname"].Value] = t;
-                }
-            }
-        }
-
-        return new TransformTable(map);
+        return new TransformTable(map, violations);
     }
 
-    private static Transform? BuildTransform(string opts)
+    private static void ReadMessageTransforms(
+        DescriptorProto msg,
+        Dictionary<string, Dictionary<string, Transform>> map,
+        List<MaskViolation> violations)
     {
+        foreach (var field in msg.Fields)
+        {
+            var t = BuildTransform(field.Options, msg.Name, field.Name, violations);
+            if (t is null) continue;
+
+            if (!map.TryGetValue(msg.Name, out var fields))
+                map[msg.Name] = fields = new Dictionary<string, Transform>();
+            fields[field.Name] = t;
+        }
+
+        foreach (var nested in msg.NestedTypes)
+            ReadMessageTransforms(nested, map, violations);
+    }
+
+    private static Transform? BuildTransform(FieldOptions? options, string message, string field, List<MaskViolation> violations)
+    {
+        if (options is null) return null;
+
         long? add = null, xor = null;
         string? fop = null, mask = null;
 
-        foreach (Match p in Regex.Matches(opts, @"(\w+)\s*=\s*(?:""([^""]*)""|(-?\d+))"))
+        foreach (var opt in options.UninterpretedOptions)
         {
-            var key = p.Groups[1].Value;
-            var str = p.Groups[2].Success ? p.Groups[2].Value : null;
-            var num = p.Groups[3].Success && long.TryParse(p.Groups[3].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?) null;
+            // Our options are simple single-part names (`add`, not `foo.add`); skip anything else.
+            if (opt.Names.Count != 1) continue;
 
-            switch (key)
+            var value = opt.AggregateValue ?? "";
+            switch (opt.Names[0].name_part)
             {
-                case "add": add = num; break;
-                case "xor": xor = num; break;
-                case "fop": fop = str; break;
-                case "mask": mask = str; break;
+                case "add": add = ParseOperand(value); break;
+                case "xor": xor = ParseOperand(value); break;
+                case "fop": fop = value; break;
+                case "mask": mask = value; break;
             }
         }
 
-        // `mask` is the manual alternative; when present it wins over add/xor.
+        // `mask` is the manual alternative; when present it wins over add/xor. It must be
+        // invertible: the compiler derives the decode path by inverting it at build time, so
+        // a mask it can't invert is rejected (no transform) rather than silently one-way.
         if (mask is not null)
-            return ParseMask(mask) ?? new Transform { RawMask = mask };
+        {
+            var parsed = ParseMask(mask);
+            if (parsed is not null) return parsed;
+
+            // Distinguish the two failure modes purely for a clearer error: out-of-grammar
+            // tokens (SLPB005) vs. legal tokens that don't form an invertible chain (SLPB006).
+            violations.Add(new MaskViolation { Message = message, Field = field, Mask = mask, Invalid = !IsSafeMaskGrammar(mask) });
+            return null;
+        }
 
         if (add.HasValue && xor.HasValue)
         {
@@ -209,6 +223,106 @@ internal static partial class CodeEmitter
         }
     }
 
+    /// <summary>
+    /// Strict grammar gate for a rejected mask, used only to choose the clearer diagnostic:
+    /// foreign tokens (SLPB005) vs. a legal-but-non-invertible chain (SLPB006). Tokenizes the
+    /// mask and verifies the whole token stream parses as a
+    /// well-formed arithmetic expression over the word <c>value</c>, integer literals,
+    /// parentheses, and the binary operators <c>+ - ^</c> (with optional unary <c>+ -</c>).
+    /// Rejects anything else: stray identifiers, run-on tokens like <c>valuevalue</c>,
+    /// adjacent operands, unbalanced parens, call syntax, punctuation.
+    /// <code>
+    /// expr    := unary (('+' | '-' | '^') unary)*
+    /// unary   := ('+' | '-')* primary
+    /// primary := 'value' | NUMBER | '(' expr ')'
+    /// </code>
+    /// </summary>
+    private static bool IsSafeMaskGrammar(string mask)
+    {
+        if (!TryTokenizeMask(mask, out var tokens)) return false;
+        var pos = 0;
+        return ParseMaskExpr(tokens, ref pos) && pos == tokens.Count;
+    }
+
+    private static bool TryTokenizeMask(string s, out List<string> tokens)
+    {
+        tokens = new List<string>();
+        var i = 0;
+        while (i < s.Length)
+        {
+            var c = s[i];
+            if (char.IsWhiteSpace(c)) { i++; continue; }
+
+            if (c is '(' or ')' or '+' or '-' or '^')
+            {
+                tokens.Add(c.ToString());
+                i++;
+            }
+            else if (char.IsDigit(c))
+            {
+                var start = i;
+                while (i < s.Length && char.IsDigit(s[i])) i++;
+                tokens.Add(s.Substring(start, i - start));
+            }
+            else if (char.IsLetter(c) || c == '_')
+            {
+                var start = i;
+                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) i++;
+                // The only legal identifier is the whole word `value`; `value1`, `valuevalue`,
+                // `System`, etc. are read as one run and rejected here.
+                if (s.Substring(start, i - start) != "value") return false;
+                tokens.Add("value");
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool ParseMaskExpr(List<string> t, ref int p)
+    {
+        if (!ParseMaskUnary(t, ref p)) return false;
+        while (p < t.Count && (t[p] == "+" || t[p] == "-" || t[p] == "^"))
+        {
+            p++;
+            if (!ParseMaskUnary(t, ref p)) return false;
+        }
+
+        return true;
+    }
+
+    private static bool ParseMaskUnary(List<string> t, ref int p)
+    {
+        while (p < t.Count && (t[p] == "+" || t[p] == "-")) p++;
+        return ParseMaskPrimary(t, ref p);
+    }
+
+    private static bool ParseMaskPrimary(List<string> t, ref int p)
+    {
+        if (p >= t.Count) return false;
+
+        var tok = t[p];
+        if (tok == "value" || char.IsDigit(tok[0]))
+        {
+            p++;
+            return true;
+        }
+
+        if (tok == "(")
+        {
+            p++;
+            if (!ParseMaskExpr(t, ref p)) return false;
+            if (p >= t.Count || t[p] != ")") return false;
+            p++;
+            return true;
+        }
+
+        return false;
+    }
+
     private static string StripOuterParens(string expr)
     {
         while (expr.Length >= 2 && expr[0] == '(' && expr[expr.Length - 1] == ')')
@@ -228,13 +342,5 @@ internal static partial class CodeEmitter
         }
 
         return expr;
-    }
-
-    private static string StripComments(string content)
-    {
-        // Block comments first, then line comments.
-        content = Regex.Replace(content, @"/\*.*?\*/", "", RegexOptions.Singleline);
-        content = Regex.Replace(content, @"//[^\r\n]*", "");
-        return content;
     }
 }

@@ -87,7 +87,7 @@ internal static partial class CodeEmitter
 
     // ---- field classification ----------------------------------------------
 
-    private static bool IsMap(FieldDescriptorProto field, Resolver resolve, out DescriptorProto? entry)
+    internal static bool IsMap(FieldDescriptorProto field, Resolver resolve, out DescriptorProto? entry)
     {
         entry = null;
         if (field.label != Label.LabelRepeated || field.type != FType.TypeMessage) return false;

@@ -26,7 +26,7 @@ internal static partial class CodeEmitter
                 continue; // canonical field absent in this version -> not serialized
 
             var oneofName = InRealOneof(field) ? OneofName(baseMsg, field) : null;
-            var transform = IsTransformable(field.type) ? transforms?.Get(versionMsg.Name, field.Name) : null;
+            var transform = transforms?.Get(versionMsg.Name, field.Name);
             EmitField(field, number, baseMsg.Name, baseNs, resolveBase, size, write, read, oneofName, transform);
         }
 

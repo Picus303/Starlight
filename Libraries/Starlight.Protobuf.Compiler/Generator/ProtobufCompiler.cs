@@ -43,6 +43,30 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor MaskGrammarError = new(
+        id: "SLPB005",
+        title: "Unsupported protobuf mask expression",
+        messageFormat: "Field '{0}' on message '{1}' has mask \"{2}\" containing tokens outside the allowed grammar (value, integer literals, parentheses, and + - ^). Only invertible arithmetic masks are supported. Fix the mask.",
+        category: "Starlight.Protobuf",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor NonInvertibleMaskError = new(
+        id: "SLPB006",
+        title: "Non-invertible protobuf mask",
+        messageFormat: "Field '{0}' on message '{1}' has a non-invertible mask \"{2}\". The compiler inverts masks at build time to generate the decode path, so the mask must be a left-deep, fully-parenthesized arithmetic chain (e.g. (value - 1) ^ 2). Fix the mask.",
+        category: "Starlight.Protobuf",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor TransformUnsupportedError = new(
+        id: "SLPB007",
+        title: "Unsupported protobuf field transform",
+        messageFormat: "Field '{0}' on message '{1}' declares a value transform but is {2}. Transforms apply only to singular integer fields (int32/64, uint32/64, sint32/64, fixed32/64, sfixed32/64). Remove the transform option.",
+        category: "Starlight.Protobuf",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     private const string Roof = "Starlight.Protobuf";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -93,6 +117,14 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         }
     }
 
+    private static void ReportMaskViolations(SourceProductionContext ctx, CodeEmitter.TransformTable transforms)
+    {
+        foreach (var v in transforms.Violations)
+            ctx.ReportDiagnostic(Diagnostic.Create(
+                v.Invalid ? MaskGrammarError : NonInvertibleMaskError,
+                Location.None, v.Field, v.Message, v.Mask));
+    }
+
     private static void Generate(SourceProductionContext ctx, ImmutableArray<Proto> protos)
     {
         if (protos.IsDefaultOrEmpty) return;
@@ -118,7 +150,6 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         var baseByName = new Dictionary<string, DescriptorProto>();
         CodeEmitter.Resolver baseResolver = _ => null;
         var cmdIds = ScanCmdIds(baseInput.Concat(versionFiles));
-        var transforms = CodeEmitter.ScanTransforms(protos.Select(p => p.Content));
 
         if (baseSet is not null)
         {
@@ -165,6 +196,9 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                 var version = Capitalize(meta.Package);
                 var versionNs = $"{baseNs}.{version}";
 
+                var transforms = CodeEmitter.ReadTransforms(versionSet);
+                ReportMaskViolations(ctx, transforms);
+
                 var correlated = versionSet.Files
                     .SelectMany(f => f.MessageTypes)
                     .Where(vm => baseByName.ContainsKey(vm.Name))
@@ -175,6 +209,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                 foreach (var (vm, bm) in correlated)
                 {
                     ValidateFieldTypes(ctx, bm, vm, version);
+                    ValidateTransforms(ctx, bm, vm, transforms, baseResolver);
                     CodeEmitter.EmitSerializer(serializers, bm, vm, baseNs, baseResolver, transforms);
                     serializers.AppendLine();
                 }
@@ -191,6 +226,8 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             var set = Parse(ctx, new[] { file }, protos);
             var ns = NamespaceOf(set) ?? "Generated";
             var resolver = BuildResolver(set);
+            var transforms = CodeEmitter.ReadTransforms(set);
+            ReportMaskViolations(ctx, transforms);
 
             var own = set.Files.Where(f => f.Name == file.FileName).ToList();
             ValidateNames(ctx, own.SelectMany(f => f.MessageTypes), own.SelectMany(f => f.EnumTypes), cmdIds, selfSerializable: true);
@@ -206,6 +243,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                 {
                     CodeEmitter.EmitPoco(body, msg, ns, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, resolver, selfSerializable: true);
                     body.AppendLine();
+                    ValidateTransforms(ctx, msg, msg, transforms, resolver);
                     CodeEmitter.EmitSerializer(body, msg, msg, ns, resolver, transforms);
                     body.AppendLine();
                 }

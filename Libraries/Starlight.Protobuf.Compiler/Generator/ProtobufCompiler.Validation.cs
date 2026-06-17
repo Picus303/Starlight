@@ -71,6 +71,39 @@ public sealed partial class ProtobufCompiler
                 m.FieldName, baseMsg.Name, m.BaseType, m.VersionType, version));
     }
 
+    /// <summary>
+    /// Rejects value transforms on fields they cannot legally apply to. The serializer
+    /// only encodes/decodes transforms on the singular-scalar path, so a transform on a
+    /// repeated, map, or non-integer field is silently dropped at runtime -- the wire
+    /// bytes would be the untransformed value. We fail the build (SLPB007) instead.
+    /// Mirrors the consumption sites: keyed by <paramref name="versionMsg"/> name over
+    /// the <paramref name="baseMsg"/> fields the serializer actually emits.
+    /// </summary>
+    private static void ValidateTransforms(SourceProductionContext ctx, DescriptorProto baseMsg,
+        DescriptorProto versionMsg, CodeEmitter.TransformTable transforms, CodeEmitter.Resolver resolve)
+    {
+        var versionNames = new HashSet<string>(versionMsg.Fields.Select(f => f.Name));
+        foreach (var field in baseMsg.Fields)
+        {
+            if (!versionNames.Contains(field.Name)) continue;
+            if (transforms.Get(versionMsg.Name, field.Name) is null) continue;
+
+            var reason = TransformRejection(field, resolve);
+            if (reason is not null)
+                ctx.ReportDiagnostic(Diagnostic.Create(TransformUnsupportedError, Location.None,
+                    field.Name, baseMsg.Name, reason));
+        }
+    }
+
+    /// <summary>Reason the field can't carry a transform, or null if it can (singular integer).</summary>
+    private static string? TransformRejection(FieldDescriptorProto field, CodeEmitter.Resolver resolve)
+    {
+        if (CodeEmitter.IsMap(field, resolve, out _)) return "a map field";
+        if (field.label == Label.LabelRepeated) return "a repeated field";
+        if (!CodeEmitter.IsTransformable(field.type)) return $"of non-integer type '{ProtoKeyword(field.type)}'";
+        return null;
+    }
+
     private static FieldShape Shape(FieldDescriptorProto f)
     {
         var repeated = f.label == Label.LabelRepeated;
