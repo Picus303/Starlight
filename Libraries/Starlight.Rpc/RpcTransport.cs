@@ -109,27 +109,28 @@ public abstract class RpcTransport : IHostedService
             return Task.CompletedTask;
         });
 
-        // Send the request.
-        await Publish(subject, message);
-
-        // Wait for the specified interval before timing out.
-        RpcMessage reply;
-
         try
         {
-            reply = await tcs.Task.WaitAsync(timeout.Value);
-        }
-        catch (TimeoutException)
-        {
-            throw new RequestTimeoutException(subject, timeout.Value);
+            // Send the request.
+            await Publish(subject, message);
+
+            // Wait for the specified interval before timing out.
+            try
+            {
+                var reply = await tcs.Task.WaitAsync(timeout.Value);
+
+                // Deserialize the response.
+                return reply.Deserialize<TResponse>();
+            }
+            catch (TimeoutException)
+            {
+                throw new RequestTimeoutException(subject, timeout.Value);
+            }
         }
         finally
         {
             subscription.Dispose();
         }
-
-        // Deserialize the response.
-        return reply.Deserialize<TResponse>();
     }
 
     #region Lifecycle
