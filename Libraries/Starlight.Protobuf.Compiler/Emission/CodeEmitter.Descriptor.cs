@@ -31,7 +31,7 @@ internal static partial class CodeEmitter
         foreach (var field in baseMsg.Fields)
         {
             if (!versionByName.TryGetValue(field.Name, out var number)) continue;
-            var transform = IsTransformable(field.type) ? transforms?.Get(versionMsg.Name, field.Name) : null;
+            var transform = transforms?.Get(versionMsg.Name, field.Name);
             sb.AppendLine($"            {FieldDescriptorExpr(field, number, baseMsg, resolve, transform)},");
         }
 
@@ -77,9 +77,10 @@ internal static partial class CodeEmitter
         if (field.type == FType.TypeMessage)
             named += $", messageRef: () => {Simple(field.TypeName)}Serializer.Descriptor";
 
-        // Only op-chain transforms (add/xor/fop and parseable masks) survive to the
-        // reflective path; an unparseable raw mask has no runtime representation.
-        if (transform is { RawMask: null })
+        // Every surviving transform is an invertible op-chain (add/xor/fop and parseable
+        // masks); non-invertible masks are rejected at compile time, so the reflective
+        // path always has a faithful runtime representation.
+        if (transform is not null)
             named += $", transform: new global::Starlight.Protobuf.Core.FieldTransform(\"{transform.Ops}\", new long[] {{ {string.Join(", ", transform.Operands)} }})";
 
         return $"{head}, {PkType}.{Kind(field.type)}, {FrType}.{rule}{named})";
