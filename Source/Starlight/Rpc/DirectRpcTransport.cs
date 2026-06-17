@@ -22,6 +22,12 @@ public sealed class DirectRpcTransport : RpcTransport
         return Task.FromResult<IDisposable>(new Subscription(handlers, handler));
     }
 
+    /// <summary>
+    /// Publishes to the current in-process subscribers sequentially.
+    /// <br/>
+    /// This transport is fail-fast: if one handler throws, the
+    /// exception is propagated and later handlers in the snapshot are not run.
+    /// </summary>
     public override async Task Publish(string subject, RpcMessage message)
     {
         if (_handlers.TryGetValue(subject, out var handlers))

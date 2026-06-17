@@ -51,6 +51,28 @@ public sealed class DirectRpcTransportTests
         Assert.Equal(expected: 2, count);
     }
 
+    // Verifies the documented fail-fast contract: if one subscriber throws, the
+    // publish operation propagates the error and stops before later handlers run.
+    [Fact]
+    public async Task Publish_HandlerThrows_StopsDeliveryAndPropagatesError()
+    {
+        var transport = new DirectRpcTransport();
+        var count = 0;
+
+        await transport.Subscribe(Subject, _ => {
+            Interlocked.Increment(ref count);
+            throw new InvalidOperationException("boom");
+        });
+
+        await transport.Subscribe(Subject, _ => {
+            Interlocked.Increment(ref count);
+            return Task.CompletedTask;
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => transport.Publish(Subject, new RpcMessage([])));
+        Assert.Equal(1, count);
+    }
+
     // Verifies that publishing to an unsubscribed subject is a no-op rather than
     // an exception path.
     [Fact]
