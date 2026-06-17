@@ -39,14 +39,15 @@ public static class ServiceExtensions
             var provider = DatabaseHelper.ParseProvider(config.Database.ConnectionString, out var connString);
             switch (provider)
             {
-                case ProviderType.Sqlite: {
-                    connString = new SqliteConnectionStringBuilder {
-                        DataSource = connString
-                    }.ToString();
+                case ProviderType.Sqlite:
+                    {
+                        connString = new SqliteConnectionStringBuilder {
+                            DataSource = connString
+                        }.ToString();
 
-                    opts.UseSqlite(connString);
-                    break;
-                }
+                        opts.UseSqlite(connString);
+                        break;
+                    }
                 default:
                     throw new NotSupportedException($"Unsupported or missing database provider '{provider?.ToString() ?? "<null>"}'.");
             }

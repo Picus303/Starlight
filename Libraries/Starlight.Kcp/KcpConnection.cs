@@ -1,4 +1,4 @@
-﻿// KcpConnection.cs
+// KcpConnection.cs
 
 using System.Net;
 using Starlight.Kcp.Internals;
