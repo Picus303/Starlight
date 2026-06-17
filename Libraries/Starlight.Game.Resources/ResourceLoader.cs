@@ -14,7 +14,7 @@ public interface IResourceLoader
     /// </summary>
     /// <param name="path">The path to the directory, relative to its base.</param>
     /// <param name="searchPattern">The pattern of files to search for.</param>
-    /// <returns>A list of file paths, relative to its base.</returns>
+    /// <returns>A list of normalized file paths, relative to the loader base and using '/' separators.</returns>
     string[] ListFiles(string path, string searchPattern = "*");
 
     /// <summary>
@@ -70,14 +70,27 @@ internal static class ResourceLoaderExtensions
 
 public class FolderLoader(DirectoryInfo resources) : IResourceLoader
 {
-    public string[] ListFiles(string path, string searchPattern = "*") =>
-        Directory.GetFiles(Path.Combine(resources.FullName, path), searchPattern);
+    /// <summary>
+    /// Returns normalized paths relative to the loader root so callers can use
+    /// the same path contract across folder-backed and zip-backed resources.
+    /// </summary>
+    public string[] ListFiles(string path, string searchPattern = "*")
+        => Directory.GetFiles(Path.Combine(resources.FullName, NormalizeForFileSystem(path)), searchPattern, SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(resources.FullName, file).Replace('\\', '/'))
+            .ToArray();
 
-    public byte[] ReadRaw(string path) => File.ReadAllBytes(Path.Combine(resources.FullName, path));
+    public byte[] ReadRaw(string path) => File.ReadAllBytes(Path.Combine(resources.FullName, NormalizeForFileSystem(path)));
+
+    private static string NormalizeForFileSystem(string path)
+        => path.Replace('/', Path.DirectorySeparatorChar);
 }
 
 public class ZipLoader(ZipArchive archive) : IResourceLoader
 {
+    /// <summary>
+    /// Returns normalized paths relative to the archive root using '/' separators.
+    /// Directory matching is segment-aware so "foo" does not also match "foobar".
+    /// </summary>
     public string[] ListFiles(string path, string searchPattern = "*")
     {
         var regexPattern = "^" + Regex.Escape(searchPattern)
@@ -91,9 +104,9 @@ public class ZipLoader(ZipArchive archive) : IResourceLoader
         lock (archive)
         {
             return archive.Entries
-                .Where(e => e.FullName.Replace('\\', '/').StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) &&
+                .Where(e => NormalizeArchivePath(e.FullName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) &&
                             regex.IsMatch(Path.GetFileName(e.FullName)))
-                .Select(e => e.FullName)
+                .Select(e => NormalizeArchivePath(e.FullName))
                 .ToArray();
         }
     }
@@ -102,7 +115,7 @@ public class ZipLoader(ZipArchive archive) : IResourceLoader
     {
         lock (archive)
         {
-            var entry = archive.GetEntry(path);
+            var entry = archive.GetEntry(NormalizeArchivePath(path));
             if (entry == null) throw new Exception("File does not exist.");
 
             using var stream = entry.Open();
@@ -110,4 +123,6 @@ public class ZipLoader(ZipArchive archive) : IResourceLoader
             return reader.ReadBytes((int)entry.Length);
         }
     }
+
+    private static string NormalizeArchivePath(string path) => path.Replace('\\', '/').TrimStart('/');
 }
