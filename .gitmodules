@@ -1,0 +1,3 @@
+[submodule "Protocol"]
+	path = Protocol
+	url = https://gitlab.com/kitkat-multiverse/Starlight-Protocol
