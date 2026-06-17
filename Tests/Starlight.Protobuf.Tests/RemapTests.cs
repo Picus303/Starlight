@@ -137,6 +137,72 @@ public sealed class RemapTests
     }
 
     [Fact]
+    public async Task Remap_IsThreadSafe_UnderConcurrentSerializationAndWrites()
+    {
+        // Hammers the three races the descriptor must survive: a half-built index
+        // observed by a deserializing reader, two writers racing on the shared index,
+        // and the fast-path gate read torn from the table it guards. The copy-on-write
+        // snapshot must let every reader see one complete, self-consistent state.
+        const int duration = 750; // ms
+        var failures = new System.Collections.Concurrent.ConcurrentQueue<Exception>();
+        using var stop = new CancellationTokenSource(duration);
+        var token = stop.Token;
+
+        try
+        {
+            var serialize = () =>
+            {
+                var message = new RemapProbe { A = 123 };
+                while (!token.IsCancellationRequested)
+                {
+                    var bytes = message.ToByteArray(Serializer);
+                    // The 'a' field is the only one set, so the wire must carry one
+                    // complete snapshot: number 21 (default) or 99 (remapped), value 123.
+                    var input = new CodedInputStream(bytes);
+                    var number = WireFormat.GetTagFieldNumber(input.ReadTag());
+                    Assert.True(number is 21 or 99, $"torn field number {number}");
+                    Assert.Equal(123, input.ReadInt32());
+                }
+            };
+
+            var lookup = () =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    // FindByNumber races the index swap; it must never throw or
+                    // observe a half-cleared dictionary, only resolve or miss cleanly.
+                    _ = Descriptor.FindByNumber(21);
+                    _ = Descriptor.FindByNumber(99);
+                }
+            };
+
+            var remap = () =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    Descriptor.Remap("a", 99);
+                    Descriptor.ClearRemaps();
+                }
+            };
+
+            var work = new[] { serialize, serialize, lookup, lookup, remap, remap };
+            var tasks = work.Select(w => Task.Run(() =>
+            {
+                try { w(); }
+                catch (Exception e) { failures.Enqueue(e); }
+            }, token)).ToArray();
+
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            Descriptor.ClearRemaps();
+        }
+
+        Assert.True(failures.IsEmpty, failures.FirstOrDefault()?.ToString());
+    }
+
+    [Fact]
     public void ReflectivePath_RoundTrips_MessageOneofCase()
     {
         var original = new RemapProbe { K = new RemapSub { N = 77 } };

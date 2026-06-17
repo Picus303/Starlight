@@ -1,6 +1,6 @@
 using System.Collections;
+using System.Collections.Frozen;
 using System.Reflection;
-using Google.Protobuf;
 using Starlight.Protobuf.Inspection;
 using Starlight.Protobuf.Serialization;
 
@@ -111,7 +111,32 @@ public sealed class FieldDescriptor
 /// </summary>
 public sealed class MessageDescriptor
 {
-    private readonly Dictionary<int, FieldDescriptor> _byNumber = new();
+    /// <summary>
+    /// Immutable snapshot of the remap state: the branch-once gate plus the
+    /// number→field index that matches it. Published as a unit through
+    /// <see cref="_index"/> so readers never observe a half-built index or a
+    /// gate that disagrees with the table it guards (copy-on-write).
+    /// </summary>
+    private sealed class Index
+    {
+        public Index(bool hasRemaps, FrozenDictionary<int, FieldDescriptor> byNumber)
+        {
+            HasRemaps = hasRemaps;
+            ByNumber = byNumber;
+        }
+
+        public bool HasRemaps { get; }
+        public FrozenDictionary<int, FieldDescriptor> ByNumber { get; }
+    }
+
+    /// <summary>
+    /// Current remap snapshot. <c>volatile</c> makes every publish visible to
+    /// hot-path readers with no lock; writers swap a fully-built replacement.
+    /// </summary>
+    private volatile Index _index;
+
+    /// <summary>Serializes the rare write events (<see cref="Remap"/> / <see cref="ClearRemaps"/>) against each other.</summary>
+    private readonly object _remapLock = new();
 
     public MessageDescriptor(string name, Type? clrType, IReadOnlyList<FieldDescriptor> fields, Func<object>? factory = null)
     {
@@ -130,7 +155,7 @@ public sealed class MessageDescriptor
             }
         }
 
-        Reindex();
+        _index = BuildIndex(hasRemaps: false);
     }
 
     public string Name { get; }
@@ -144,10 +169,10 @@ public sealed class MessageDescriptor
     public Func<object>? Factory { get; }
 
     /// <summary>True once any field has been remapped; the branch-once gate for the fast path.</summary>
-    public bool HasRemaps { get; private set; }
+    public bool HasRemaps => _index.HasRemaps;
 
     /// <summary>Looks up a field by its effective wire number.</summary>
-    public FieldDescriptor? FindByNumber(int number) => _byNumber.TryGetValue(number, out var f) ? f : null;
+    public FieldDescriptor? FindByNumber(int number) => _index.ByNumber.TryGetValue(number, out var f) ? f : null;
 
     /// <summary>Looks up a field by canonical name or C# property name.</summary>
     public FieldDescriptor? Find(string nameOrProperty) =>
@@ -157,31 +182,43 @@ public sealed class MessageDescriptor
     /// Overrides the effective wire number of a field (live deobfuscation). Flips the
     /// message onto the reflective slow path; the fast path resumes after
     /// <see cref="ClearRemaps"/>. Returns false if no such field exists.
+    ///
+    /// Thread-safe against concurrent (de)serialization and other writers: the new
+    /// number and matching index are published atomically as one immutable snapshot.
+    /// A single <c>Remap</c> is fully consistent for in-flight readers; if you remap
+    /// several fields that must take effect together, quiesce serialization first,
+    /// since each call publishes independently.
     /// </summary>
     public bool Remap(string fieldOrProperty, int wireNumber)
     {
-        var f = Find(fieldOrProperty);
-        if (f is null) return false;
-        f.Number = wireNumber;
-        HasRemaps = true;
-        Reindex();
-        return true;
+        lock (_remapLock)
+        {
+            var f = Find(fieldOrProperty);
+            if (f is null) return false;
+            f.Number = wireNumber;
+            _index = BuildIndex(hasRemaps: true);
+            return true;
+        }
     }
 
     /// <summary>Restores every field's default wire number and returns to the fast path.</summary>
     public void ClearRemaps()
     {
-        foreach (var f in Fields)
-            f.Number = f.DefaultNumber;
-        HasRemaps = false;
-        Reindex();
+        lock (_remapLock)
+        {
+            foreach (var f in Fields)
+                f.Number = f.DefaultNumber;
+            _index = BuildIndex(hasRemaps: false);
+        }
     }
 
-    private void Reindex()
+    /// <summary>Builds a fresh, frozen number→field index from the current effective numbers.</summary>
+    private Index BuildIndex(bool hasRemaps)
     {
-        _byNumber.Clear();
+        var byNumber = new Dictionary<int, FieldDescriptor>(Fields.Count);
         foreach (var f in Fields)
-            _byNumber[f.Number] = f;
+            byNumber[f.Number] = f;
+        return new Index(hasRemaps, byNumber.ToFrozenDictionary());
     }
 
     // -- value access (reflection for POCOs, accessor for dynamic) -----------
