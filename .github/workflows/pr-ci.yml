@@ -26,6 +26,9 @@ jobs:
       - name: Restore
         run: dotnet restore Starlight.slnx
 
+      - name: Format
+        run: dotnet format --verify-no-changes --no-restore Starlight.slnx
+
       - name: Build
         run: dotnet build Starlight.slnx --configuration Release --no-restore -warnaserror
 
