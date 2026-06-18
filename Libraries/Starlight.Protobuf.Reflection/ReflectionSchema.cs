@@ -27,7 +27,8 @@ public sealed class ReflectionSchema
         IReadOnlyDictionary<string, MessageDescriptor> byName,
         IReadOnlyDictionary<int, string> cmdIdToName,
         IReadOnlyDictionary<string, int> nameToCmdId,
-        IReadOnlySet<int> knownFirst)
+        IReadOnlySet<int> knownFirst
+    )
     {
         Version = version;
         ByName = byName;
@@ -54,11 +55,15 @@ public sealed class ReflectionSchema
     public static ReflectionSchema Load(IReadOnlyDictionary<string, string> sources, string? version = null)
     {
         var set = new ProtoSet { FileSystem = new InMemoryFileSystem(sources) };
+
         foreach (var kv in sources)
-            set.Add(kv.Key, includeInOutput: true, source: new StringReader(kv.Value));
+        {
+            set.Add(kv.Key, includeInOutput: true, new StringReader(kv.Value));
+        }
         set.Process();
 
         var errors = set.GetErrors().Where(e => e.IsError).ToList();
+
         if (errors.Count > 0)
             throw new InvalidOperationException(
                 "Failed to parse .proto sources:\n" + string.Join("\n", errors.Select(e => e.ToString())));
@@ -68,12 +73,17 @@ public sealed class ReflectionSchema
 
         // Top-level messages (map entries are nested and handled inline).
         foreach (var msg in set.Files.SelectMany(f => f.MessageTypes))
+        {
             BuildDescriptor(msg, byName, resolver);
+        }
 
         var nameToCmdId = ScanCmdIds(sources.Values);
         var cmdIdToName = new Dictionary<int, string>();
+
         foreach (var kv in nameToCmdId)
+        {
             cmdIdToName[kv.Value] = kv.Key;
+        }
 
         var knownFirst = nameToCmdId
             .Where(kv => KnownFirstNames.Contains(kv.Key))
@@ -81,9 +91,10 @@ public sealed class ReflectionSchema
             .ToHashSet();
 
         string resolvedVersion;
+
         if (version is not null)
             resolvedVersion = version;
-        else if (set.Files.Select(f => f.Package).FirstOrDefault(p => !string.IsNullOrEmpty(p)) is { } pkg)
+        else if (set.Files.Select(f => f.Package).FirstOrDefault(p => !string.IsNullOrEmpty(p)) is {} pkg)
             resolvedVersion = Capitalize(pkg);
         else
             resolvedVersion = "Reflection";
@@ -96,18 +107,23 @@ public sealed class ReflectionSchema
     private static MessageDescriptor BuildDescriptor(
         ProtoMsg msg,
         Dictionary<string, MessageDescriptor> byName,
-        Func<string, ProtoMsg?> resolver)
+        Func<string, ProtoMsg?> resolver
+    )
     {
         if (byName.TryGetValue(msg.Name, out var existing)) return existing;
 
         var fields = new List<FieldDescriptor>();
+
         foreach (var field in msg.Fields)
+        {
             fields.Add(BuildField(field, msg, byName, resolver));
+        }
 
         MessageDescriptor descriptor = null!;
+
         descriptor = new MessageDescriptor(
             msg.Name, clrType: null, fields,
-            factory: () => new DynamicMessage(descriptor));
+            () => new DynamicMessage(descriptor));
         byName[msg.Name] = descriptor;
         return descriptor;
     }
@@ -116,7 +132,8 @@ public sealed class ReflectionSchema
         ProtoField field,
         ProtoMsg msg,
         Dictionary<string, MessageDescriptor> byName,
-        Func<string, ProtoMsg?> resolver)
+        Func<string, ProtoMsg?> resolver
+    )
     {
         var prop = Prop(field.Name, msg.Name);
 
@@ -125,15 +142,17 @@ public sealed class ReflectionSchema
         Func<MessageDescriptor>? MessageRef(string typeName)
         {
             var simple = Simple(typeName);
-            return () => byName.TryGetValue(simple, out var d)
-                ? d
-                : throw new InvalidOperationException($"Unknown message type '{simple}' referenced by {msg.Name}.{field.Name}.");
+
+            return () => byName.TryGetValue(simple, out var d) ?
+                d :
+                throw new InvalidOperationException($"Unknown message type '{simple}' referenced by {msg.Name}.{field.Name}.");
         }
 
         if (IsMap(field, resolver, out var entry))
         {
             var keyField = entry!.Fields.First(f => f.Number == 1);
             var valField = entry.Fields.First(f => f.Number == 2);
+
             return new FieldDescriptor(
                 field.Name, prop, field.Number, field.Number,
                 Kind(valField.type), FieldRule.Map,
@@ -149,13 +168,14 @@ public sealed class ReflectionSchema
 
         string? oneofName = null;
         var rule = FieldRule.Single;
+
         if (InRealOneof(field)) oneofName = Pascal(msg.OneofDecls[field.OneofIndex].Name);
         else if (field.Proto3Optional) rule = FieldRule.Optional;
 
         return new FieldDescriptor(
             field.Name, prop, field.Number, field.Number,
             Kind(field.type), rule,
-            oneofName: oneofName,
+            oneofName,
             messageRef: field.type == FType.TypeMessage ? MessageRef(field.TypeName) : null);
     }
 
@@ -163,16 +183,17 @@ public sealed class ReflectionSchema
     {
         entry = null;
         if (field.label != Label.LabelRepeated || field.type != FType.TypeMessage) return false;
+
         var d = resolver(field.TypeName);
         if (d?.Options?.MapEntry != true) return false;
+
         entry = d;
         return true;
     }
 
     private static bool InRealOneof(ProtoField f) => f.ShouldSerializeOneofIndex() && !f.Proto3Optional;
 
-    private static ProtoKind Kind(FType type) => type switch
-    {
+    private static ProtoKind Kind(FType type) => type switch {
         FType.TypeDouble => ProtoKind.Double,
         FType.TypeFloat => ProtoKind.Float,
         FType.TypeInt64 => ProtoKind.Int64,
@@ -190,7 +211,7 @@ public sealed class ReflectionSchema
         FType.TypeSint64 => ProtoKind.SInt64,
         FType.TypeEnum => ProtoKind.Enum,
         FType.TypeMessage => ProtoKind.Message,
-        _ => throw new InvalidOperationException($"Unsupported proto type: {type}"),
+        _ => throw new InvalidOperationException($"Unsupported proto type: {type}")
     };
 
     // -- parsing helpers ------------------------------------------------------
@@ -198,15 +219,18 @@ public sealed class ReflectionSchema
     private static Func<string, ProtoMsg?> BuildResolver(ProtoSet set)
     {
         var map = new Dictionary<string, ProtoMsg>();
+
         foreach (var file in set.Files)
         {
             var prefix = string.IsNullOrEmpty(file.Package) ? "" : file.Package;
+
             foreach (var msg in file.MessageTypes)
+            {
                 Index(msg, prefix, map);
+            }
         }
 
-        return name =>
-        {
+        return name => {
             var key = name.TrimStart('.');
             return map.TryGetValue(key, out var d) ? d : null;
         };
@@ -216,24 +240,32 @@ public sealed class ReflectionSchema
     {
         var fq = string.IsNullOrEmpty(prefix) ? d.Name : $"{prefix}.{d.Name}";
         map[fq] = d;
+
         foreach (var nested in d.NestedTypes)
+        {
             Index(nested, fq, map);
+        }
     }
 
     private static Dictionary<string, int> ScanCmdIds(IEnumerable<string> sources)
     {
         var map = new Dictionary<string, int>();
+
         foreach (var content in sources)
         {
             foreach (Match m in Regex.Matches(content, @"//\s*CmdId\s*:\s*(-?\d+)\s*[\r\n]+\s*message\s+(\w+)"))
+            {
                 if (int.TryParse(m.Groups[1].Value, out var id))
                     map[m.Groups[2].Value] = id;
+            }
 
             foreach (Match m in Regex.Matches(content, @"message\s+(\w+)\s*\{(.*?)\}", RegexOptions.Singleline))
             {
                 var name = m.Groups[1].Value;
                 if (map.ContainsKey(name)) continue;
+
                 var e = Regex.Match(m.Groups[2].Value, @"CMD_ID\s*=\s*(-?\d+)");
+
                 if (e.Success && int.TryParse(e.Groups[1].Value, out var id))
                     map[name] = id;
             }
@@ -252,9 +284,14 @@ public sealed class ReflectionSchema
     {
         var sb = new StringBuilder(snake.Length);
         var upper = true;
+
         foreach (var c in snake)
         {
-            if (c == '_') { upper = true; continue; }
+            if (c == '_')
+            {
+                upper = true;
+                continue;
+            }
             sb.Append(upper ? char.ToUpperInvariant(c) : c);
             upper = false;
         }

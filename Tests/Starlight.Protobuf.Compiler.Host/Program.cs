@@ -11,20 +11,24 @@ var protoFiles = Directory.GetFiles(
     SearchOption.AllDirectories);
 
 Console.WriteLine($"Found {protoFiles.Length} .proto file(s):");
+
 foreach (var file in protoFiles)
+{
     Console.WriteLine($"  {file}");
+}
 Console.WriteLine();
 
 ImmutableArray<AdditionalText> additionalTexts =
     [.. protoFiles.Select(AdditionalText (f) => new ProtoText(f))];
 
 var compilation = CSharpCompilation.Create(
-    assemblyName: "Starlight.Protobuf.Compiler.DebugHost",
+    "Starlight.Protobuf.Compiler.DebugHost",
     syntaxTrees: null,
-    references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
-    options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
 var generator = new ProtobufCompiler();
+
 var driver = CSharpGeneratorDriver
     .Create(generator)
     .AddAdditionalTexts(additionalTexts);
@@ -43,19 +47,25 @@ var diagnostics = driverDiagnostics
     .ToArray();
 
 Console.WriteLine($"Diagnostics ({diagnostics.Length}):");
+
 foreach (var diagnostic in diagnostics)
+{
     Console.WriteLine($"  {diagnostic.Severity}: {diagnostic}");
+}
+
 if (diagnostics.Length == 0)
     Console.WriteLine("  (none)");
 Console.WriteLine();
 
 var generatedSources = result.Results.SelectMany(r => r.GeneratedSources).ToArray();
 Console.WriteLine($"Generated sources ({generatedSources.Length}):");
+
 foreach (var source in generatedSources)
 {
     Console.WriteLine($"// ==================== {source.HintName} ====================");
     Console.WriteLine(source.SourceText);
 }
+
 if (generatedSources.Length == 0)
     Console.WriteLine("  (none)");
 
@@ -63,6 +73,7 @@ if (generatedSources.Length == 0)
 var crash = result.Results
     .Select(r => r.Exception)
     .FirstOrDefault(e => e is not null);
+
 if (crash is not null)
 {
     Console.WriteLine();

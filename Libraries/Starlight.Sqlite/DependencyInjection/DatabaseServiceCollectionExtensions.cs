@@ -25,7 +25,12 @@ public static class DatabaseServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddStarlightDatabase(this IServiceCollection services, string path, SqliteConfig config, params Assembly[] modelAssemblies)
+    public static IServiceCollection AddStarlightDatabase(
+        this IServiceCollection services,
+        string path,
+        SqliteConfig config,
+        params Assembly[] modelAssemblies
+    )
     {
         return services.AddStarlightDatabase(options => {
             options.Path = path;

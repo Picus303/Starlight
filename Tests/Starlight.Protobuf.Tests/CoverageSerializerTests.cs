@@ -41,9 +41,9 @@ public sealed class CoverageSerializerTests
         var restored = new Coverage();
         restored.MergeFrom(Serializer, original.ToByteArray(Serializer));
 
-        Assert.Equal(42, restored.OptInt);
+        Assert.Equal(expected: 42, restored.OptInt);
         Assert.Equal("hello", restored.OptStr);
-        Assert.Equal(7, restored.Plain);
+        Assert.Equal(expected: 7, restored.Plain);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class CoverageSerializerTests
         msg.ChoiceInt = 5;
         Assert.Equal(Coverage.ChoiceOneofCase.ChoiceInt, msg.ChoiceCase);
         Assert.Equal("", msg.ChoiceStr); // inactive case reads as default
-        Assert.Equal(5, msg.ChoiceInt);
+        Assert.Equal(expected: 5, msg.ChoiceInt);
     }
 
     [Fact]
@@ -95,19 +95,20 @@ public sealed class CoverageSerializerTests
 
         Assert.Equal(Coverage.ChoiceOneofCase.ChoiceStr, restored.ChoiceCase);
         Assert.Equal("picked", restored.ChoiceStr);
-        Assert.Equal(0, restored.ChoiceInt);
+        Assert.Equal(expected: 0, restored.ChoiceInt);
     }
 
     [Fact]
     public void Oneof_MessageCase_RoundTrips()
     {
         var restored = new Coverage();
+
         restored.MergeFrom(Serializer,
             new Coverage { ChoiceMsg = new CoverageSub { Value = 99 } }.ToByteArray(Serializer));
 
         Assert.Equal(Coverage.ChoiceOneofCase.ChoiceMsg, restored.ChoiceCase);
         Assert.NotNull(restored.ChoiceMsg);
-        Assert.Equal(99, restored.ChoiceMsg!.Value);
+        Assert.Equal(expected: 99, restored.ChoiceMsg!.Value);
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public sealed class CoverageSerializerTests
         restored.MergeFrom(Serializer, [.. a, .. b]);
 
         Assert.Equal(Coverage.ChoiceOneofCase.ChoiceInt, restored.ChoiceCase);
-        Assert.Equal(123, restored.ChoiceInt);
+        Assert.Equal(expected: 123, restored.ChoiceInt);
     }
 
     // ---- version-independent (independent.proto) ----------------------------
@@ -129,14 +130,13 @@ public sealed class CoverageSerializerTests
     [Fact]
     public void Independent_Frame_RoundTrips()
     {
-        var original = new Frame
-        {
+        var original = new Frame {
             SequenceId = 11,
             SentMs = 1717000000000,
             Flags = 6,
             Length = 2048,
             Index = 1,
-            Total = 4,
+            Total = 4
         };
 
         var restored = new Frame();

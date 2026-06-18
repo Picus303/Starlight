@@ -11,12 +11,12 @@ namespace Starlight.Protobuf.Tests;
 /// </summary>
 public sealed class HandwrittenSerializerTests
 {
-    private sealed class Sample : Starlight.Protobuf.Core.IMessage<Sample>
+    private sealed class Sample : Core.IMessage<Sample>
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public bool Flag { get; set; }
-        public Starlight.Protobuf.Core.UnknownFieldSet? UnknownFields { get; set; }
+        public Core.UnknownFieldSet? UnknownFields { get; set; }
     }
 
     private sealed class SampleSerializer : ISerializer<Sample>
@@ -24,10 +24,13 @@ public sealed class HandwrittenSerializerTests
         public int CalculateSize(Sample m)
         {
             var size = 0;
+
             if (m.Id != 0)
                 size += 1 + CodedOutputStream.ComputeInt32Size(m.Id);
+
             if (m.Name.Length != 0)
                 size += 1 + CodedOutputStream.ComputeStringSize(m.Name);
+
             if (m.Flag)
                 size += 1 + CodedOutputStream.ComputeBoolSize(m.Flag);
             return size;
@@ -40,11 +43,13 @@ public sealed class HandwrittenSerializerTests
                 output.WriteRawTag(0x08); // field 1, varint
                 output.WriteInt32(m.Id);
             }
+
             if (m.Name.Length != 0)
             {
                 output.WriteRawTag(0x12); // field 2, length-delimited
                 output.WriteString(m.Name);
             }
+
             if (m.Flag)
             {
                 output.WriteRawTag(0x18); // field 3, varint
@@ -55,6 +60,7 @@ public sealed class HandwrittenSerializerTests
         public void Deserialize(Sample m, CodedInputStream input)
         {
             uint tag;
+
             while ((tag = input.ReadTag()) != 0)
             {
                 switch (tag)
@@ -84,11 +90,10 @@ public sealed class HandwrittenSerializerTests
 
         var bytes = message.ToByteArray(serializer);
 
-        byte[] expected =
-        [
-            0x08, 0x96, 0x01,                                     // field 1 = 150
+        byte[] expected = [
+            0x08, 0x96, 0x01, // field 1 = 150
             0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67, // field 2 = "testing"
-            0x18, 0x01,                                            // field 3 = true
+            0x18, 0x01 // field 3 = true
         ];
         Assert.Equal(expected, bytes);
     }

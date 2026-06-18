@@ -8,9 +8,9 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\Libraries\Starlight.Common\Starlight.Common.csproj"/>
-        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.Base\Starlight.Game.Protocol.Base.csproj" />
-        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.V66\Starlight.Game.Protocol.V66.csproj" />
-        <ProjectReference Include="..\..\Libraries\Starlight.Game.Resources\Starlight.Game.Resources.csproj" />
+        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.Base\Starlight.Game.Protocol.Base.csproj"/>
+        <ProjectReference Include="..\..\Protocol\Starlight.Game.Protocol.V66\Starlight.Game.Protocol.V66.csproj"/>
+        <ProjectReference Include="..\..\Libraries\Starlight.Game.Resources\Starlight.Game.Resources.csproj"/>
         <ProjectReference Include="..\..\Libraries\Starlight.Kcp\Starlight.Kcp.csproj"/>
     </ItemGroup>
 

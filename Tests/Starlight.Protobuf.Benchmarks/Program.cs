@@ -11,6 +11,7 @@ if (args.Length == 1 && args[0] == "--verify")
 {
     Verify("ScalarMatrix", Samples.GoogleScalar().ToByteArray(),
         Samples.StarlightScalar().ToByteArray(ScalarMatrixSerializer.Instance));
+
     Verify("Coverage", Samples.GoogleCoverage().ToByteArray(),
         Samples.StarlightCoverage().ToByteArray(CoverageSerializer.Instance));
     return;

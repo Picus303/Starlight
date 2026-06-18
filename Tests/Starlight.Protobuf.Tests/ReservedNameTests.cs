@@ -25,8 +25,8 @@ public sealed class ReservedNameTests
     }
 
     [Theory]
-    [InlineData("Class")]   // PascalCased -- the emitter's property path is already safe
-    [InlineData("value")]   // contextual keyword, legal identifier
+    [InlineData("Class")] // PascalCased -- the emitter's property path is already safe
+    [InlineData("value")] // contextual keyword, legal identifier
     [InlineData("var")]
     [InlineData("Message")]
     public void NonReservedName_IsAccepted(string name)
@@ -50,7 +50,7 @@ public sealed class ReservedNameTests
     public void Field_CollidingWithUnknownFields_IsRejected()
     {
         var v = ReservedNames.GeneratedMemberCollisions(
-            "M", hasCmdId: false, realOneofNames: [], fieldNames: ["unknown_fields"]);
+            "M", hasCmdId: false, [], ["unknown_fields"]);
 
         var hit = Assert.Single(v);
         Assert.Equal("field", hit.Kind);
@@ -62,10 +62,10 @@ public sealed class ReservedNameTests
     public void Field_CollidingWithCmdId_OnlyWhenMessageHasCmdId()
     {
         Assert.Empty(ReservedNames.GeneratedMemberCollisions(
-            "M", hasCmdId: false, realOneofNames: [], fieldNames: ["cmd_id"]));
+            "M", hasCmdId: false, [], ["cmd_id"]));
 
         var v = ReservedNames.GeneratedMemberCollisions(
-            "M", hasCmdId: true, realOneofNames: [], fieldNames: ["cmd_id"]);
+            "M", hasCmdId: true, [], ["cmd_id"]);
         Assert.Equal("CmdId", Assert.Single(v).CsName);
     }
 
@@ -75,7 +75,7 @@ public sealed class ReservedNameTests
     public void Field_CollidingWithOneofGeneratedMember_IsRejected(string field, string csName)
     {
         var v = ReservedNames.GeneratedMemberCollisions(
-            "M", hasCmdId: false, realOneofNames: ["choice"], fieldNames: [field]);
+            "M", hasCmdId: false, ["choice"], [field]);
 
         Assert.Equal(csName, Assert.Single(v).CsName);
     }
@@ -84,7 +84,7 @@ public sealed class ReservedNameTests
     public void Field_NotCollidingWithAbsentOneof_IsAccepted()
     {
         Assert.Empty(ReservedNames.GeneratedMemberCollisions(
-            "M", hasCmdId: false, realOneofNames: [], fieldNames: ["choice_case", "regular_field"]));
+            "M", hasCmdId: false, [], ["choice_case", "regular_field"]));
     }
 
     [Fact]
@@ -92,6 +92,6 @@ public sealed class ReservedNameTests
     {
         // Prop suffixes "_" on a type-name collision, so the field clears the generated set.
         Assert.Empty(ReservedNames.GeneratedMemberCollisions(
-            "Unknown", hasCmdId: false, realOneofNames: [], fieldNames: ["unknown"]));
+            "Unknown", hasCmdId: false, [], ["unknown"]));
     }
 }

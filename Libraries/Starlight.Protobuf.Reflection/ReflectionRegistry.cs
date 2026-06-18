@@ -45,7 +45,7 @@ public sealed class ReflectionRegistry : ProtocolRegistry
 
     public override int GetCmdId(IMessage message)
     {
-        var name = ((DynamicMessage) message).Descriptor.Name;
+        var name = ((DynamicMessage)message).Descriptor.Name;
         return _schema.NameToCmdId.TryGetValue(name, out var id) ? id : 0;
     }
 
@@ -53,24 +53,25 @@ public sealed class ReflectionRegistry : ProtocolRegistry
     {
         if (!_schema.CmdIdToName.TryGetValue(cmdId, out var name))
             throw new ArgumentOutOfRangeException(nameof(cmdId), cmdId, $"Unknown CmdId for reflection registry '{Version}'.");
+
         return new DynamicMessage(Descriptor(name));
     }
 
     public override int CalculateSize(IMessage message)
     {
-        var dynamic = (DynamicMessage) message;
+        var dynamic = (DynamicMessage)message;
         return ReflectiveEngine.CalculateSize(dynamic.Descriptor, dynamic);
     }
 
     public override void Serialize(IMessage message, CodedOutputStream output)
     {
-        var dynamic = (DynamicMessage) message;
+        var dynamic = (DynamicMessage)message;
         ReflectiveEngine.Serialize(dynamic.Descriptor, dynamic, output);
     }
 
     public override void Deserialize(IMessage message, CodedInputStream input)
     {
-        var dynamic = (DynamicMessage) message;
+        var dynamic = (DynamicMessage)message;
         ReflectiveEngine.Deserialize(dynamic.Descriptor, dynamic, input);
     }
 
@@ -83,7 +84,7 @@ public sealed class ReflectionRegistry : ProtocolRegistry
     public override MessageDescriptor? GetDescriptor(Type messageType) => null;
 
     private MessageDescriptor Descriptor(string name) =>
-        _schema.ByName.TryGetValue(name, out var d)
-            ? d
-            : throw new ArgumentException($"Unknown message '{name}' in reflection registry '{Version}'.", nameof(name));
+        _schema.ByName.TryGetValue(name, out var d) ?
+            d :
+            throw new ArgumentException($"Unknown message '{name}' in reflection registry '{Version}'.", nameof(name));
 }

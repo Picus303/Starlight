@@ -14,19 +14,20 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddStarlightProtocol(
         this IServiceCollection services,
-        Action<StarlightProtocolOptions>? configure = null)
+        Action<StarlightProtocolOptions>? configure = null
+    )
     {
         var options = new StarlightProtocolOptions();
         configure?.Invoke(options);
 
-        services.AddSingleton<IProtocolRegistryProvider>(_ =>
-        {
+        services.AddSingleton<IProtocolRegistryProvider>(_ => {
             var registries = new List<ProtocolRegistry>(ProtocolHelper.DiscoverRegistries(options.Assemblies));
 
             if (!string.IsNullOrEmpty(options.PluginDirectory))
                 registries.AddRange(ProtocolHelper.LoadFromDirectory(options.PluginDirectory));
 
             var provider = new ProtocolRegistryProvider(registries);
+
             if (options.SetAsDefault)
                 ProtocolHelper.Default = provider;
 

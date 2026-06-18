@@ -64,18 +64,25 @@ public static class FieldCorrelation
 {
     /// <summary>Type mismatches among fields present in both messages, in base field order.</summary>
     public static IReadOnlyList<FieldTypeMismatch> Mismatches(
-        IEnumerable<FieldShape> baseFields, IEnumerable<FieldShape> versionFields)
+        IEnumerable<FieldShape> baseFields,
+        IEnumerable<FieldShape> versionFields
+    )
     {
         // First occurrence wins: de-obfuscated version protos can carry duplicate field
         // names, and ToDictionary would throw. Mirrors CodeEmitter.FieldsByName.
         var versionByName = new Dictionary<string, FieldShape>();
+
         foreach (var f in versionFields)
+        {
             if (!versionByName.ContainsKey(f.Name)) versionByName[f.Name] = f;
+        }
         var mismatches = new List<FieldTypeMismatch>();
+
         foreach (var b in baseFields)
         {
             if (!versionByName.TryGetValue(b.Name, out var v)) continue;
             if (Matches(b, v)) continue;
+
             mismatches.Add(new FieldTypeMismatch(b.Name, Describe(b), Describe(v)));
         }
 
@@ -88,9 +95,7 @@ public static class FieldCorrelation
     /// The reported field name is the base field's.
     /// </summary>
     public static FieldTypeMismatch? Compare(FieldShape baseField, FieldShape versionField) =>
-        Matches(baseField, versionField)
-            ? null
-            : new FieldTypeMismatch(baseField.Name, Describe(baseField), Describe(versionField));
+        Matches(baseField, versionField) ? null : new FieldTypeMismatch(baseField.Name, Describe(baseField), Describe(versionField));
 
     private static bool Matches(FieldShape a, FieldShape b) =>
         a.ProtoType == b.ProtoType && a.Repeated == b.Repeated && a.TypeName == b.TypeName;

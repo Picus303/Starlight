@@ -31,8 +31,7 @@ public sealed class UnknownFieldSet
 
         switch (wireType)
         {
-            case WireFormat.WireType.Varint:
-            {
+            case WireFormat.WireType.Varint: {
                 var value = input.ReadUInt64();
                 var buffer = new byte[CodedOutputStream.ComputeUInt64Size(value)];
                 var output = new CodedOutputStream(buffer);
@@ -40,16 +39,14 @@ public sealed class UnknownFieldSet
                 output.Flush();
                 return new UnknownField(number, wireType, buffer);
             }
-            case WireFormat.WireType.Fixed32:
-            {
+            case WireFormat.WireType.Fixed32: {
                 var buffer = new byte[4];
                 var output = new CodedOutputStream(buffer);
                 output.WriteFixed32(input.ReadFixed32());
                 output.Flush();
                 return new UnknownField(number, wireType, buffer);
             }
-            case WireFormat.WireType.Fixed64:
-            {
+            case WireFormat.WireType.Fixed64: {
                 var buffer = new byte[8];
                 var output = new CodedOutputStream(buffer);
                 output.WriteFixed64(input.ReadFixed64());

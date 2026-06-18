@@ -38,8 +38,7 @@ public static class ReservedNames
     // are legal identifiers, and PascalCasing already keeps generated property /
     // enum-member names clear of this all-lowercase set. So this bites the names
     // emitted verbatim, where proto permits a lowercase keyword.
-    private static readonly HashSet<string> Keywords = new()
-    {
+    private static readonly HashSet<string> Keywords = new() {
         "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char",
         "checked", "class", "const", "continue", "decimal", "default", "delegate",
         "do", "double", "else", "enum", "event", "explicit", "extern", "false",
@@ -49,7 +48,7 @@ public static class ReservedNames
         "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
         "short", "sizeof", "stackalloc", "static", "string", "struct", "switch",
         "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked",
-        "unsafe", "ushort", "using", "virtual", "void", "volatile", "while",
+        "unsafe", "ushort", "using", "virtual", "void", "volatile", "while"
     };
 
     public static bool IsReservedKeyword(string name) => Keywords.Contains(name);
@@ -63,9 +62,7 @@ public static class ReservedNames
     /// proto name (<paramref name="protoName"/>).
     /// </summary>
     public static NameViolation? CheckKeyword(string kind, string protoName, string csName) =>
-        IsReservedKeyword(csName)
-            ? new NameViolation(kind, protoName, csName, "is a reserved C# keyword")
-            : null;
+        IsReservedKeyword(csName) ? new NameViolation(kind, protoName, csName, "is a reserved C# keyword") : null;
 
     /// <summary>
     /// Field property names that collide with a member the emitter synthesizes on the
@@ -76,12 +73,17 @@ public static class ReservedNames
     /// names (Pascaled here to match emission).
     /// </summary>
     public static IReadOnlyList<NameViolation> GeneratedMemberCollisions(
-        string messageName, bool hasCmdId, IEnumerable<string> realOneofNames, IEnumerable<string> fieldNames,
-        bool selfSerializable = false)
+        string messageName,
+        bool hasCmdId,
+        IEnumerable<string> realOneofNames,
+        IEnumerable<string> fieldNames,
+        bool selfSerializable = false
+    )
     {
         var generated = new HashSet<string> { "UnknownFields" };
         if (hasCmdId) generated.Add("CmdId");
         if (selfSerializable) generated.Add("Serializer");
+
         foreach (var oneof in realOneofNames)
         {
             var p = CodeEmitter.Pascal(oneof);
@@ -91,9 +93,11 @@ public static class ReservedNames
         }
 
         var violations = new List<NameViolation>();
+
         foreach (var field in fieldNames)
         {
             var prop = CodeEmitter.Prop(field, messageName);
+
             if (generated.Contains(prop))
                 violations.Add(new NameViolation("field", field, prop,
                     $"collides with a compiler-generated member of message '{messageName}'"));

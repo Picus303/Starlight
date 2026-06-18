@@ -16,10 +16,8 @@ public sealed class DbGateService(
 {
     private readonly HashSet<IDisposable> _subscriptions = [];
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
+    public async Task StartAsync(CancellationToken cancellationToken) =>
         _subscriptions.Add(await rpc.Subscribe<FetchPlayerReq>(GameSubjects.FetchPlayer, players.Fetch));
-    }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
@@ -37,6 +35,7 @@ public static class ServiceExtensions
     {
         collection.AddDbContext<StarlightDbContext>(opts => {
             var provider = DatabaseHelper.ParseProvider(config.Database.ConnectionString, out var connString);
+
             switch (provider)
             {
                 case ProviderType.Sqlite: {

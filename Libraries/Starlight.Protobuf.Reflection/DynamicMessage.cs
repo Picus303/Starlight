@@ -20,7 +20,10 @@ public sealed class DynamicMessage : IDynamicMessage
     private readonly Dictionary<string, IDictionary> _maps = new();
     private readonly Dictionary<string, (int Case, object? Value)> _oneofs = new();
 
-    public DynamicMessage(MessageDescriptor descriptor) => Descriptor = descriptor;
+    public DynamicMessage(MessageDescriptor descriptor)
+    {
+        Descriptor = descriptor;
+    }
 
     public MessageDescriptor Descriptor { get; }
 
@@ -33,8 +36,10 @@ public sealed class DynamicMessage : IDynamicMessage
         // Unset: optional and message fields are absent (null); implicit scalars
         // report their proto3 zero so the engine's presence check sees a default.
         var f = Descriptor.Find(field);
+
         if (f is null || f.Rule == FieldRule.Optional || f.Kind == ProtoKind.Message)
             return null;
+
         return ScalarDefault(f.Kind);
     }
 
@@ -55,8 +60,7 @@ public sealed class DynamicMessage : IDynamicMessage
     public void SetOneof(string oneofName, int caseNumber, object? value) =>
         _oneofs[oneofName] = (caseNumber, value);
 
-    private static object ScalarDefault(ProtoKind kind) => kind switch
-    {
+    private static object ScalarDefault(ProtoKind kind) => kind switch {
         ProtoKind.String => "",
         ProtoKind.Bytes => ByteString.Empty,
         ProtoKind.Bool => false,
@@ -65,6 +69,6 @@ public sealed class DynamicMessage : IDynamicMessage
         ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => 0L,
         ProtoKind.UInt32 or ProtoKind.Fixed32 => 0u,
         ProtoKind.UInt64 or ProtoKind.Fixed64 => 0UL,
-        _ => 0, // int32 / sint32 / sfixed32 / enum
+        _ => 0 // int32 / sint32 / sfixed32 / enum
     };
 }

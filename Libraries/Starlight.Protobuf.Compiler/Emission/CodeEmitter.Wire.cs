@@ -25,33 +25,58 @@ internal static partial class CodeEmitter
     {
         switch (type)
         {
-            case FType.TypeDouble: return new Wire { CsType = "double", WireType = 1, Write = "WriteDouble", Read = "ReadDouble", Compute = "ComputeDoubleSize" };
-            case FType.TypeFloat: return new Wire { CsType = "float", WireType = 5, Write = "WriteFloat", Read = "ReadFloat", Compute = "ComputeFloatSize" };
-            case FType.TypeInt64: return new Wire { CsType = "long", WireType = 0, Write = "WriteInt64", Read = "ReadInt64", Compute = "ComputeInt64Size" };
-            case FType.TypeUint64: return new Wire { CsType = "ulong", WireType = 0, Write = "WriteUInt64", Read = "ReadUInt64", Compute = "ComputeUInt64Size" };
-            case FType.TypeInt32: return new Wire { CsType = "int", WireType = 0, Write = "WriteInt32", Read = "ReadInt32", Compute = "ComputeInt32Size" };
-            case FType.TypeFixed64: return new Wire { CsType = "ulong", WireType = 1, Write = "WriteFixed64", Read = "ReadFixed64", Compute = "ComputeFixed64Size" };
-            case FType.TypeFixed32: return new Wire { CsType = "uint", WireType = 5, Write = "WriteFixed32", Read = "ReadFixed32", Compute = "ComputeFixed32Size" };
-            case FType.TypeBool: return new Wire { CsType = "bool", WireType = 0, Write = "WriteBool", Read = "ReadBool", Compute = "ComputeBoolSize" };
-            case FType.TypeString: return new Wire { CsType = "string", WireType = 2, Write = "WriteString", Read = "ReadString", Compute = "ComputeStringSize" };
-            case FType.TypeBytes: return new Wire { CsType = "global::Google.Protobuf.ByteString", WireType = 2, Write = "WriteBytes", Read = "ReadBytes", Compute = "ComputeBytesSize" };
-            case FType.TypeUint32: return new Wire { CsType = "uint", WireType = 0, Write = "WriteUInt32", Read = "ReadUInt32", Compute = "ComputeUInt32Size" };
-            case FType.TypeSfixed32: return new Wire { CsType = "int", WireType = 5, Write = "WriteSFixed32", Read = "ReadSFixed32", Compute = "ComputeSFixed32Size" };
-            case FType.TypeSfixed64: return new Wire { CsType = "long", WireType = 1, Write = "WriteSFixed64", Read = "ReadSFixed64", Compute = "ComputeSFixed64Size" };
-            case FType.TypeSint32: return new Wire { CsType = "int", WireType = 0, Write = "WriteSInt32", Read = "ReadSInt32", Compute = "ComputeSInt32Size" };
-            case FType.TypeSint64: return new Wire { CsType = "long", WireType = 0, Write = "WriteSInt64", Read = "ReadSInt64", Compute = "ComputeSInt64Size" };
-            case FType.TypeEnum: return new Wire { CsType = enumCsType, WireType = 0, Write = "WriteEnum", Read = "ReadEnum", Compute = "ComputeEnumSize", IsEnum = true };
+            case FType.TypeDouble:
+                return new Wire { CsType = "double", WireType = 1, Write = "WriteDouble", Read = "ReadDouble", Compute = "ComputeDoubleSize" };
+            case FType.TypeFloat:
+                return new Wire { CsType = "float", WireType = 5, Write = "WriteFloat", Read = "ReadFloat", Compute = "ComputeFloatSize" };
+            case FType.TypeInt64:
+                return new Wire { CsType = "long", WireType = 0, Write = "WriteInt64", Read = "ReadInt64", Compute = "ComputeInt64Size" };
+            case FType.TypeUint64:
+                return new Wire { CsType = "ulong", WireType = 0, Write = "WriteUInt64", Read = "ReadUInt64", Compute = "ComputeUInt64Size" };
+            case FType.TypeInt32:
+                return new Wire { CsType = "int", WireType = 0, Write = "WriteInt32", Read = "ReadInt32", Compute = "ComputeInt32Size" };
+            case FType.TypeFixed64:
+                return new Wire
+                    { CsType = "ulong", WireType = 1, Write = "WriteFixed64", Read = "ReadFixed64", Compute = "ComputeFixed64Size" };
+            case FType.TypeFixed32:
+                return new Wire
+                    { CsType = "uint", WireType = 5, Write = "WriteFixed32", Read = "ReadFixed32", Compute = "ComputeFixed32Size" };
+            case FType.TypeBool:
+                return new Wire { CsType = "bool", WireType = 0, Write = "WriteBool", Read = "ReadBool", Compute = "ComputeBoolSize" };
+            case FType.TypeString:
+                return new Wire { CsType = "string", WireType = 2, Write = "WriteString", Read = "ReadString", Compute = "ComputeStringSize" };
+            case FType.TypeBytes:
+                return new Wire {
+                    CsType = "global::Google.Protobuf.ByteString", WireType = 2, Write = "WriteBytes", Read = "ReadBytes",
+                    Compute = "ComputeBytesSize"
+                };
+            case FType.TypeUint32:
+                return new Wire { CsType = "uint", WireType = 0, Write = "WriteUInt32", Read = "ReadUInt32", Compute = "ComputeUInt32Size" };
+            case FType.TypeSfixed32:
+                return new Wire
+                    { CsType = "int", WireType = 5, Write = "WriteSFixed32", Read = "ReadSFixed32", Compute = "ComputeSFixed32Size" };
+            case FType.TypeSfixed64:
+                return new Wire
+                    { CsType = "long", WireType = 1, Write = "WriteSFixed64", Read = "ReadSFixed64", Compute = "ComputeSFixed64Size" };
+            case FType.TypeSint32:
+                return new Wire { CsType = "int", WireType = 0, Write = "WriteSInt32", Read = "ReadSInt32", Compute = "ComputeSInt32Size" };
+            case FType.TypeSint64:
+                return new Wire { CsType = "long", WireType = 0, Write = "WriteSInt64", Read = "ReadSInt64", Compute = "ComputeSInt64Size" };
+            case FType.TypeEnum:
+                return new Wire
+                    { CsType = enumCsType, WireType = 0, Write = "WriteEnum", Read = "ReadEnum", Compute = "ComputeEnumSize", IsEnum = true };
             default: throw new InvalidOperationException($"Unsupported scalar proto type: {type}");
         }
     }
 
     private static byte[] TagBytes(int number, int wireType)
     {
-        var tag = ((uint) number << 3) | (uint) wireType;
+        var tag = (uint)number << 3 | (uint)wireType;
         var bytes = new List<byte>();
+
         do
         {
-            var b = (byte) (tag & 0x7F);
+            var b = (byte)(tag & 0x7F);
             tag >>= 7;
             if (tag != 0) b |= 0x80;
             bytes.Add(b);
@@ -60,7 +85,7 @@ internal static partial class CodeEmitter
         return bytes.ToArray();
     }
 
-    private static uint TagValue(int number, int wireType) => ((uint) number << 3) | (uint) wireType;
+    private static uint TagValue(int number, int wireType) => (uint)number << 3 | (uint)wireType;
 
     private static string RawTag(int number, int wireType) =>
         $"output.WriteRawTag({string.Join(", ", TagBytes(number, wireType).Select(b => "0x" + b.ToString("X2")))})";
@@ -82,6 +107,7 @@ internal static partial class CodeEmitter
         if (type is FType.TypeString or FType.TypeBytes) return $"{acc}.Length != 0";
         if (type == FType.TypeBool) return acc;
         if (w.IsEnum) return $"(int) {acc} != 0";
+
         return $"{acc} != 0";
     }
 
@@ -91,7 +117,9 @@ internal static partial class CodeEmitter
     {
         entry = null;
         if (field.label != Label.LabelRepeated || field.type != FType.TypeMessage) return false;
+
         var d = resolve(field.TypeName);
+
         if (d?.Options?.MapEntry == true)
         {
             entry = d;
@@ -105,11 +133,11 @@ internal static partial class CodeEmitter
     {
         if (field.type == FType.TypeMessage) return $"global::{baseNs}.{TypePath(field.TypeName, csNames)}";
         if (field.type == FType.TypeEnum) return $"global::{baseNs}.{TypePath(field.TypeName, csNames)}";
+
         return Scalar(field.type, "").CsType;
     }
 
-    private static string Kind(FType type) => type switch
-    {
+    private static string Kind(FType type) => type switch {
         FType.TypeDouble => "Double",
         FType.TypeFloat => "Float",
         FType.TypeInt64 => "Int64",
@@ -127,6 +155,6 @@ internal static partial class CodeEmitter
         FType.TypeSint64 => "SInt64",
         FType.TypeEnum => "Enum",
         FType.TypeMessage => "Message",
-        _ => throw new InvalidOperationException($"Unsupported proto type for descriptor: {type}"),
+        _ => throw new InvalidOperationException($"Unsupported proto type for descriptor: {type}")
     };
 }

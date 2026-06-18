@@ -21,8 +21,11 @@ public static class ProtocolInspector
     public static string ToJson(IMessage message, bool indented = false)
     {
         using var stream = new MemoryStream();
+
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented }))
+        {
             WriteMessage(writer, message);
+        }
 
         return Encoding.UTF8.GetString(stream.ToArray());
     }
@@ -40,6 +43,7 @@ public static class ProtocolInspector
         {
             writer.WritePropertyName("_unknown");
             writer.WriteStartArray();
+
             foreach (var field in unknown.Fields)
             {
                 writer.WriteStartObject();
@@ -75,9 +79,11 @@ public static class ProtocolInspector
     private static void WriteDynamicFields(Utf8JsonWriter writer, IDynamicMessage message)
     {
         var desc = message.Descriptor;
+
         foreach (var f in desc.Fields)
         {
             object? value;
+
             switch (f.Rule)
             {
                 case FieldRule.Map:
@@ -90,9 +96,9 @@ public static class ProtocolInspector
                     if (f.InOneof)
                     {
                         if (!desc.OneofActive(message, f)) continue;
+
                         value = desc.GetOneof(message, f);
-                    }
-                    else
+                    } else
                     {
                         value = desc.GetValue(message, f);
                     }
@@ -109,9 +115,14 @@ public static class ProtocolInspector
     {
         var sb = new StringBuilder(snake.Length);
         var upper = false;
+
         foreach (var c in snake)
         {
-            if (c == '_') { upper = true; continue; }
+            if (c == '_')
+            {
+                upper = true;
+                continue;
+            }
             sb.Append(upper ? char.ToUpperInvariant(c) : c);
             upper = false;
         }
@@ -176,6 +187,7 @@ public static class ProtocolInspector
                 break;
             case IDictionary dict:
                 writer.WriteStartObject();
+
                 foreach (DictionaryEntry entry in dict)
                 {
                     writer.WritePropertyName(entry.Key?.ToString() ?? "");
@@ -186,8 +198,11 @@ public static class ProtocolInspector
                 break;
             case IEnumerable enumerable:
                 writer.WriteStartArray();
+
                 foreach (var item in enumerable)
+                {
                     WriteValue(writer, item);
+                }
                 writer.WriteEndArray();
                 break;
             default:

@@ -11,8 +11,7 @@ namespace Starlight.Protobuf.Benchmarks;
 /// </summary>
 internal static class Samples
 {
-    public static GGoogle.ScalarMatrix GoogleScalar() => new()
-    {
+    public static GGoogle.ScalarMatrix GoogleScalar() => new() {
         FInt32 = 123,
         FInt64 = -456,
         FUint32 = 789,
@@ -27,11 +26,10 @@ internal static class Samples
         FFloat = 3.14f,
         FDouble = 2.71828,
         FString = "matrix",
-        FBytes = ByteString.CopyFromUtf8("raw"),
+        FBytes = ByteString.CopyFromUtf8("raw")
     };
 
-    public static ScalarMatrix StarlightScalar() => new()
-    {
+    public static ScalarMatrix StarlightScalar() => new() {
         FInt32 = 123,
         FInt64 = -456,
         FUint32 = 789,
@@ -46,23 +44,21 @@ internal static class Samples
         FFloat = 3.14f,
         FDouble = 2.71828,
         FString = "matrix",
-        FBytes = ByteString.CopyFromUtf8("raw"),
+        FBytes = ByteString.CopyFromUtf8("raw")
     };
 
-    public static GGoogle.Coverage GoogleCoverage() => new()
-    {
+    public static GGoogle.Coverage GoogleCoverage() => new() {
         OptInt = 42,
         OptStr = "hello",
         Plain = 7,
-        ChoiceMsg = new GGoogle.CoverageSub { Value = 99 },
+        ChoiceMsg = new GGoogle.CoverageSub { Value = 99 }
     };
 
-    public static Coverage StarlightCoverage() => new()
-    {
+    public static Coverage StarlightCoverage() => new() {
         OptInt = 42,
         OptStr = "hello",
         Plain = 7,
-        ChoiceMsg = new CoverageSub { Value = 99 },
+        ChoiceMsg = new CoverageSub { Value = 99 }
     };
 
     /// <summary>Builds an array of <paramref name="count"/> items from a factory —

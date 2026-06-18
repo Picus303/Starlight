@@ -16,50 +16,50 @@ namespace Starlight.Protobuf.Tests;
 public sealed class ReflectionRegistryTests
 {
     private const string Schema = """
-        syntax = "proto3";
-        package v99;
+                                  syntax = "proto3";
+                                  package v99;
 
-        enum Color { RED = 0; GREEN = 1; BLUE = 2; }
+                                  enum Color { RED = 0; GREEN = 1; BLUE = 2; }
 
-        message Sub { int32 n = 1; }
+                                  message Sub { int32 n = 1; }
 
-        // CmdId: 4001
-        message Probe {
-          int32 a = 1;
-          string b = 2;
-          optional int32 c = 3;
-          repeated int32 d = 4;
-          map<int32, string> e = 5;
-          Sub f = 6;
-          repeated Sub g = 7;
-          Color color = 8;
-          oneof choice {
-            int32 h = 9;
-            Sub i = 10;
-          }
-        }
+                                  // CmdId: 4001
+                                  message Probe {
+                                    int32 a = 1;
+                                    string b = 2;
+                                    optional int32 c = 3;
+                                    repeated int32 d = 4;
+                                    map<int32, string> e = 5;
+                                    Sub f = 6;
+                                    repeated Sub g = 7;
+                                    Color color = 8;
+                                    oneof choice {
+                                      int32 h = 9;
+                                      Sub i = 10;
+                                    }
+                                  }
 
-        // CmdId: 100
-        message GetPlayerTokenReq { int32 uid = 1; }
+                                  // CmdId: 100
+                                  message GetPlayerTokenReq { int32 uid = 1; }
 
-        message ScalarBag {
-          int32 f_int32 = 1;
-          int64 f_int64 = 2;
-          uint32 f_uint32 = 3;
-          uint64 f_uint64 = 4;
-          sint32 f_sint32 = 5;
-          sint64 f_sint64 = 6;
-          fixed32 f_fixed32 = 7;
-          fixed64 f_fixed64 = 8;
-          sfixed32 f_sfixed32 = 9;
-          sfixed64 f_sfixed64 = 10;
-          bool f_bool = 11;
-          float f_float = 12;
-          double f_double = 13;
-          string f_string = 14;
-          bytes f_bytes = 15;
-        }
-        """;
+                                  message ScalarBag {
+                                    int32 f_int32 = 1;
+                                    int64 f_int64 = 2;
+                                    uint32 f_uint32 = 3;
+                                    uint64 f_uint64 = 4;
+                                    sint32 f_sint32 = 5;
+                                    sint64 f_sint64 = 6;
+                                    fixed32 f_fixed32 = 7;
+                                    fixed64 f_fixed64 = 8;
+                                    sfixed32 f_sfixed32 = 9;
+                                    sfixed64 f_sfixed64 = 10;
+                                    bool f_bool = 11;
+                                    float f_float = 12;
+                                    double f_double = 13;
+                                    string f_string = 14;
+                                    bytes f_bytes = 15;
+                                  }
+                                  """;
 
     private static ReflectionRegistry Load() =>
         ReflectionRegistry.Load(new Dictionary<string, string> { ["schema.proto"] = Schema });
@@ -74,8 +74,8 @@ public sealed class ReflectionRegistryTests
     public void KnownFirst_PopulatedFromCmdIdComments()
     {
         var registry = Load();
-        Assert.Contains(100, registry.KnownFirst); // GetPlayerTokenReq
-        Assert.DoesNotContain(4001, registry.KnownFirst); // Probe is not a first-packet name
+        Assert.Contains(expected: 100, registry.KnownFirst); // GetPlayerTokenReq
+        Assert.DoesNotContain(expected: 4001, registry.KnownFirst); // Probe is not a first-packet name
     }
 
     [Fact]
@@ -93,19 +93,19 @@ public sealed class ReflectionRegistryTests
     {
         var registry = Load();
         var message = registry.CreateByName("ScalarBag");
-        message.Set("f_int32", 123);
-        message.Set("f_int64", -456L);
-        message.Set("f_uint32", 789u);
-        message.Set("f_uint64", 1011UL);
-        message.Set("f_sint32", -1213);
-        message.Set("f_sint64", -1415L);
-        message.Set("f_fixed32", 1617u);
-        message.Set("f_fixed64", 1819UL);
-        message.Set("f_sfixed32", -1920);
-        message.Set("f_sfixed64", -2122L);
-        message.Set("f_bool", true);
-        message.Set("f_float", 3.14f);
-        message.Set("f_double", 2.71828);
+        message.Set("f_int32", value: 123);
+        message.Set("f_int64", value: -456L);
+        message.Set("f_uint32", value: 789u);
+        message.Set("f_uint64", value: 1011UL);
+        message.Set("f_sint32", value: -1213);
+        message.Set("f_sint64", value: -1415L);
+        message.Set("f_fixed32", value: 1617u);
+        message.Set("f_fixed64", value: 1819UL);
+        message.Set("f_sfixed32", value: -1920);
+        message.Set("f_sfixed64", value: -2122L);
+        message.Set("f_bool", value: true);
+        message.Set("f_float", value: 3.14f);
+        message.Set("f_double", value: 2.71828);
         message.Set("f_string", "matrix");
         message.Set("f_bytes", ByteString.CopyFromUtf8("raw"));
 
@@ -113,21 +113,36 @@ public sealed class ReflectionRegistryTests
 
         var stream = new MemoryStream();
         var o = new CodedOutputStream(stream);
-        o.WriteTag(1, WireFormat.WireType.Varint); o.WriteInt32(123);
-        o.WriteTag(2, WireFormat.WireType.Varint); o.WriteInt64(-456);
-        o.WriteTag(3, WireFormat.WireType.Varint); o.WriteUInt32(789);
-        o.WriteTag(4, WireFormat.WireType.Varint); o.WriteUInt64(1011);
-        o.WriteTag(5, WireFormat.WireType.Varint); o.WriteSInt32(-1213);
-        o.WriteTag(6, WireFormat.WireType.Varint); o.WriteSInt64(-1415);
-        o.WriteTag(7, WireFormat.WireType.Fixed32); o.WriteFixed32(1617);
-        o.WriteTag(8, WireFormat.WireType.Fixed64); o.WriteFixed64(1819);
-        o.WriteTag(9, WireFormat.WireType.Fixed32); o.WriteSFixed32(-1920);
-        o.WriteTag(10, WireFormat.WireType.Fixed64); o.WriteSFixed64(-2122);
-        o.WriteTag(11, WireFormat.WireType.Varint); o.WriteBool(true);
-        o.WriteTag(12, WireFormat.WireType.Fixed32); o.WriteFloat(3.14f);
-        o.WriteTag(13, WireFormat.WireType.Fixed64); o.WriteDouble(2.71828);
-        o.WriteTag(14, WireFormat.WireType.LengthDelimited); o.WriteString("matrix");
-        o.WriteTag(15, WireFormat.WireType.LengthDelimited); o.WriteBytes(ByteString.CopyFromUtf8("raw"));
+        o.WriteTag(fieldNumber: 1, WireFormat.WireType.Varint);
+        o.WriteInt32(123);
+        o.WriteTag(fieldNumber: 2, WireFormat.WireType.Varint);
+        o.WriteInt64(-456);
+        o.WriteTag(fieldNumber: 3, WireFormat.WireType.Varint);
+        o.WriteUInt32(789);
+        o.WriteTag(fieldNumber: 4, WireFormat.WireType.Varint);
+        o.WriteUInt64(1011);
+        o.WriteTag(fieldNumber: 5, WireFormat.WireType.Varint);
+        o.WriteSInt32(-1213);
+        o.WriteTag(fieldNumber: 6, WireFormat.WireType.Varint);
+        o.WriteSInt64(-1415);
+        o.WriteTag(fieldNumber: 7, WireFormat.WireType.Fixed32);
+        o.WriteFixed32(1617);
+        o.WriteTag(fieldNumber: 8, WireFormat.WireType.Fixed64);
+        o.WriteFixed64(1819);
+        o.WriteTag(fieldNumber: 9, WireFormat.WireType.Fixed32);
+        o.WriteSFixed32(-1920);
+        o.WriteTag(fieldNumber: 10, WireFormat.WireType.Fixed64);
+        o.WriteSFixed64(-2122);
+        o.WriteTag(fieldNumber: 11, WireFormat.WireType.Varint);
+        o.WriteBool(true);
+        o.WriteTag(fieldNumber: 12, WireFormat.WireType.Fixed32);
+        o.WriteFloat(3.14f);
+        o.WriteTag(fieldNumber: 13, WireFormat.WireType.Fixed64);
+        o.WriteDouble(2.71828);
+        o.WriteTag(fieldNumber: 14, WireFormat.WireType.LengthDelimited);
+        o.WriteString("matrix");
+        o.WriteTag(fieldNumber: 15, WireFormat.WireType.LengthDelimited);
+        o.WriteBytes(ByteString.CopyFromUtf8("raw"));
         o.Flush();
 
         Assert.Equal(stream.ToArray(), bytes);
@@ -137,10 +152,10 @@ public sealed class ReflectionRegistryTests
     public void Probe_RoundTrips_AcrossEveryKind()
     {
         var registry = Load();
-        var original = (DynamicMessage) registry.Create(4001); // Probe via CmdId
-        original.Set("a", 42);
+        var original = (DynamicMessage)registry.Create(4001); // Probe via CmdId
+        original.Set("a", value: 42);
         original.Set("b", "hello");
-        original.Set("c", -7);
+        original.Set("c", value: -7);
         original.GetList("d").Add(1);
         original.GetList("d").Add(2);
         original.GetList("d").Add(300);
@@ -148,33 +163,35 @@ public sealed class ReflectionRegistryTests
         original.GetMap("e")[20] = "twenty";
 
         var sub = registry.CreateByName("Sub");
-        sub.Set("n", 99);
+        sub.Set("n", value: 99);
         original.Set("f", sub);
 
-        var g1 = registry.CreateByName("Sub"); g1.Set("n", 1);
-        var g2 = registry.CreateByName("Sub"); g2.Set("n", 2);
+        var g1 = registry.CreateByName("Sub");
+        g1.Set("n", value: 1);
+        var g2 = registry.CreateByName("Sub");
+        g2.Set("n", value: 2);
         original.GetList("g").Add(g1);
         original.GetList("g").Add(g2);
 
-        original.Set("color", (int) 2); // BLUE
-        original.SetOneof("Choice", 9, 4567); // oneof field h (base number 9)
+        original.Set("color", (int)2); // BLUE
+        original.SetOneof("Choice", caseNumber: 9, value: 4567); // oneof field h (base number 9)
 
         var bytes = registry.Serialize(original);
-        var restored = (DynamicMessage) registry.Create(4001);
+        var restored = (DynamicMessage)registry.Create(4001);
         registry.Deserialize(restored, new CodedInputStream(bytes));
 
-        Assert.Equal(42, restored.Get("a"));
+        Assert.Equal(expected: 42, restored.Get("a"));
         Assert.Equal("hello", restored.Get("b"));
-        Assert.Equal(-7, restored.Get("c"));
+        Assert.Equal(expected: -7, restored.Get("c"));
         Assert.Equal(new object?[] { 1, 2, 300 }, restored.GetList("d").Cast<object?>());
         Assert.Equal("ten", restored.GetMap("e")[10]);
         Assert.Equal("twenty", restored.GetMap("e")[20]);
-        Assert.Equal(99, ((DynamicMessage) restored.Get("f")!).Get("n"));
+        Assert.Equal(expected: 99, ((DynamicMessage)restored.Get("f")!).Get("n"));
         var gs = restored.GetList("g").Cast<DynamicMessage>().Select(m => m.Get("n")).ToArray();
         Assert.Equal(new object?[] { 1, 2 }, gs);
-        Assert.Equal(2, restored.Get("color"));
-        Assert.Equal(9, restored.ActiveOneof("Choice"));
-        Assert.Equal(4567, restored.GetOneof("Choice"));
+        Assert.Equal(expected: 2, restored.Get("color"));
+        Assert.Equal(expected: 9, restored.ActiveOneof("Choice"));
+        Assert.Equal(expected: 4567, restored.GetOneof("Choice"));
     }
 
     [Fact]
@@ -183,15 +200,15 @@ public sealed class ReflectionRegistryTests
         var registry = Load();
         var original = registry.CreateByName("Probe");
         var sub = registry.CreateByName("Sub");
-        sub.Set("n", 77);
-        original.SetOneof("Choice", 10, sub); // oneof field i (base number 10)
+        sub.Set("n", value: 77);
+        original.SetOneof("Choice", caseNumber: 10, sub); // oneof field i (base number 10)
 
         var bytes = registry.Serialize(original);
         var restored = registry.CreateByName("Probe");
         registry.Deserialize(restored, new CodedInputStream(bytes));
 
-        Assert.Equal(10, restored.ActiveOneof("Choice"));
-        Assert.Equal(77, ((DynamicMessage) restored.GetOneof("Choice")!).Get("n"));
+        Assert.Equal(expected: 10, restored.ActiveOneof("Choice"));
+        Assert.Equal(expected: 77, ((DynamicMessage)restored.GetOneof("Choice")!).Get("n"));
     }
 
     [Fact]
@@ -202,14 +219,16 @@ public sealed class ReflectionRegistryTests
         // A wire payload with a field (50) the schema does not define.
         var stream = new MemoryStream();
         var o = new CodedOutputStream(stream);
-        o.WriteTag(1, WireFormat.WireType.Varint); o.WriteInt32(5); // Sub.n
-        o.WriteTag(50, WireFormat.WireType.Varint); o.WriteInt32(999); // unknown
+        o.WriteTag(fieldNumber: 1, WireFormat.WireType.Varint);
+        o.WriteInt32(5); // Sub.n
+        o.WriteTag(fieldNumber: 50, WireFormat.WireType.Varint);
+        o.WriteInt32(999); // unknown
         o.Flush();
 
         var message = registry.CreateByName("Sub");
         registry.Deserialize(message, new CodedInputStream(stream.ToArray()));
 
-        Assert.Equal(5, message.Get("n"));
+        Assert.Equal(expected: 5, message.Get("n"));
         Assert.NotNull(message.UnknownFields);
         Assert.Contains(message.UnknownFields!.Fields, fld => fld.FieldNumber == 50);
     }
@@ -219,7 +238,7 @@ public sealed class ReflectionRegistryTests
     {
         var registry = Load();
         var message = registry.CreateByName("Probe");
-        message.Set("a", 7);
+        message.Set("a", value: 7);
         message.Set("b", "hi");
 
         var json = ProtocolInspector.ToJson(message);

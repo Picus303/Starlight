@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Google.Protobuf" Version="3.35.1" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
+        <PackageReference Include="Google.Protobuf" Version="3.35.1"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115"/>
     </ItemGroup>
 
 </Project>

@@ -53,23 +53,22 @@ public sealed class RegistrySerializerTests
         byte[] expected = [0x32, 0x03, 0x01, 0x02, 0x03]; // tag, length 3, three 1-byte varints
         Assert.Equal(expected, bytes);
 
-        var restored = (PingReq) Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
+        var restored = (PingReq)Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
         Assert.Equal(new uint[] { 1, 2, 3 }, restored.Tags);
     }
 
     [Fact]
     public void RoundTrip_PingReq_PreservesCanonicalFields()
     {
-        var original = new PingReq
-        {
+        var original = new PingReq {
             ClientId = "client-123",
             Seq = 42,
             Tags = { 7, 8, 9 },
-            Flag = true,
+            Flag = true
         };
 
         var bytes = Registry.Serialize(original);
-        var restored = (PingReq) Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
+        var restored = (PingReq)Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
 
         Assert.Equal(original.ClientId, restored.ClientId);
         Assert.Equal(original.Seq, restored.Seq);
@@ -85,20 +84,20 @@ public sealed class RegistrySerializerTests
         // v99 wire field 5.
         var output = new MemoryStream();
         var cos = new CodedOutputStream(output);
-        cos.WriteTag(1824, WireFormat.WireType.LengthDelimited);
+        cos.WriteTag(fieldNumber: 1824, WireFormat.WireType.LengthDelimited);
         cos.WriteString("obfuscated");
-        cos.WriteTag(5, WireFormat.WireType.LengthDelimited); // client_id
+        cos.WriteTag(fieldNumber: 5, WireFormat.WireType.LengthDelimited); // client_id
         cos.WriteString("client");
         cos.Flush();
 
-        var restored = (PingReq) Registry.Deserialize(
+        var restored = (PingReq)Registry.Deserialize(
             PingReqCmdId, new CodedInputStream(output.ToArray()));
 
         Assert.Equal("client", restored.ClientId);
 
         Assert.NotNull(restored.UnknownFields);
         var unknown = Assert.Single(restored.UnknownFields!.Fields);
-        Assert.Equal(1824, unknown.FieldNumber);
+        Assert.Equal(expected: 1824, unknown.FieldNumber);
         Assert.Equal(WireFormat.WireType.LengthDelimited, unknown.WireType);
         Assert.Equal("obfuscated", System.Text.Encoding.UTF8.GetString(unknown.Data));
     }
@@ -108,13 +107,13 @@ public sealed class RegistrySerializerTests
     {
         var output = new MemoryStream();
         var cos = new CodedOutputStream(output);
-        cos.WriteTag(1824, WireFormat.WireType.LengthDelimited);
+        cos.WriteTag(fieldNumber: 1824, WireFormat.WireType.LengthDelimited);
         cos.WriteString("obfuscated");
-        cos.WriteTag(5, WireFormat.WireType.LengthDelimited); // client_id
+        cos.WriteTag(fieldNumber: 5, WireFormat.WireType.LengthDelimited); // client_id
         cos.WriteString("client");
         cos.Flush();
 
-        var restored = (PingReq) Registry.Deserialize(
+        var restored = (PingReq)Registry.Deserialize(
             PingReqCmdId, new CodedInputStream(output.ToArray()));
 
         var json = ProtocolInspector.ToJson(restored);
@@ -128,8 +127,8 @@ public sealed class RegistrySerializerTests
     [Fact]
     public void GetCmdId_ResolvesByMessageType()
     {
-        Assert.Equal(700, Registry.GetCmdId(new PingReq()));
-        Assert.Equal(4242, Registry.GetCmdId(new Coverage()));
+        Assert.Equal(expected: 700, Registry.GetCmdId(new PingReq()));
+        Assert.Equal(expected: 4242, Registry.GetCmdId(new Coverage()));
     }
 
     [Fact]
@@ -143,6 +142,6 @@ public sealed class RegistrySerializerTests
     public void Registry_ExposesVersionAndKnownFirst()
     {
         Assert.Equal("V99", Registry.Version);
-        Assert.Contains(700, Registry.KnownFirst);
+        Assert.Contains(expected: 700, Registry.KnownFirst);
     }
 }

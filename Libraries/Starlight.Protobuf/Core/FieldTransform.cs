@@ -42,11 +42,10 @@ public sealed class FieldTransform
         }
     }
 
-    private static long Apply(char op, long value, long operand) => op switch
-    {
+    private static long Apply(char op, long value, long operand) => op switch {
         '+' => value + operand,
         '-' => value - operand,
-        _ => value ^ operand,
+        _ => value ^ operand
     };
 
     private static char Inverse(char op) => op switch { '+' => '-', '-' => '+', _ => '^' };

@@ -32,5 +32,5 @@ public interface IMessage<T> : IMessage where T : IMessage<T>;
 public interface ISelfSerializable<T> : IMessage<T> where T : ISelfSerializable<T>
 {
     /// <summary>The one serializer for this message type.</summary>
-    static abstract ISerializer<T> Serializer { get; }
+    abstract static ISerializer<T> Serializer { get; }
 }

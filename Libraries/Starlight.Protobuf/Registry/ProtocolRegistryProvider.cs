@@ -24,6 +24,7 @@ public sealed class ProtocolRegistryProvider : IProtocolRegistryProvider
                 throw new InvalidOperationException(
                     $"Duplicate protocol registry version '{registry.Version}': " +
                     $"'{duplicate.GetType().FullName}' and '{registry.GetType().FullName}'.");
+
             _byVersion[registry.Version] = registry;
 
             foreach (var cmdId in registry.KnownFirst)

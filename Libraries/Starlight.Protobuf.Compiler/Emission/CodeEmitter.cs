@@ -41,6 +41,7 @@ internal static partial class CodeEmitter
     internal static bool IsUnknownPlaceholder(FieldDescriptorProto f)
     {
         if (f.type != FieldDescriptorProto.Type.TypeMessage) return false;
+
         var simple = Simple(f.TypeName);
         return simple is "UnknownMessage" or "UnknownType";
     }
@@ -60,6 +61,7 @@ internal static partial class CodeEmitter
     internal static Dictionary<string, FieldDescriptorProto> FieldsByName(IEnumerable<FieldDescriptorProto> fields)
     {
         var map = new Dictionary<string, FieldDescriptorProto>();
+
         foreach (var f in fields)
         {
             var key = StripPrefix(f.Name);
@@ -75,6 +77,7 @@ internal static partial class CodeEmitter
     {
         var sb = new StringBuilder(snake.Length);
         var upper = true;
+
         foreach (var c in snake)
         {
             if (c == '_')
@@ -115,6 +118,7 @@ internal static partial class CodeEmitter
         var i = 0;
         while (i < name.Length && name[i] == '_') i++;
         if (i == 0 || i >= name.Length || char.IsDigit(name[i])) return name;
+
         return name.Substring(i);
     }
 

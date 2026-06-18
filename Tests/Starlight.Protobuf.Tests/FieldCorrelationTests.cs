@@ -84,8 +84,8 @@ public sealed class FieldCorrelationTests
         // Different categories (varint enum vs length-delimited message) must not be
         // masked by a coincidentally equal referent name.
         var m = FieldCorrelation.Mismatches(
-            [new FieldShape("f", "enum", false, "Color")],
-            [new FieldShape("f", "message", false, "Color")]);
+            [new FieldShape("f", "enum", repeated: false, "Color")],
+            [new FieldShape("f", "message", repeated: false, "Color")]);
 
         var hit = Assert.Single(m);
         Assert.Equal("enum Color", hit.BaseType);

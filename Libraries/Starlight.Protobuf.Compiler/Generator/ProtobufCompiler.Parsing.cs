@@ -15,20 +15,29 @@ public sealed partial class ProtobufCompiler
         // imports that point at files outside the parsed group (e.g. extra.proto's
         // custom-option extensions). Only the group is added to output, however.
         var fsSources = new Dictionary<string, string>();
+
         foreach (var p in allFiles)
+        {
             fsSources[p.FileName] = p.Content;
+        }
 
         var groupList = group.ToList();
+
         foreach (var p in groupList)
+        {
             fsSources[p.FileName] = p.Content;
+        }
 
         var set = new FileDescriptorSet { FileSystem = new InMemoryFileSystem(fsSources) };
         // protobuf-net only searches its importPaths for unresolved imports; with none
         // registered the FileSystem is never consulted. "." is enough because
         // InMemoryFileSystem normalizes every lookup to its file name.
         set.AddImportPath(".");
+
         foreach (var p in groupList)
-            set.Add(p.FileName, includeInOutput: true, source: new StringReader(p.Content));
+        {
+            set.Add(p.FileName, includeInOutput: true, new StringReader(p.Content));
+        }
 
         set.Process();
 
@@ -37,8 +46,10 @@ public sealed partial class ProtobufCompiler
         // parser still flags them as unresolved custom options, but the field's
         // structure (type/name/number) is intact, so those specific errors are noise.
         foreach (var error in set.GetErrors().Where(e => e.IsError && !IsTransformOptionError(e.Message)))
+        {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 ParseError, Location.None, error.File, error.LineNumber, error.ColumnNumber, error.Message));
+        }
 
         return set;
     }
@@ -49,9 +60,12 @@ public sealed partial class ProtobufCompiler
     {
         if (message.IndexOf("custom option", System.StringComparison.OrdinalIgnoreCase) < 0)
             return false;
+
         foreach (var name in TransformOptionNames)
+        {
             if (message.IndexOf($"'{name}'", System.StringComparison.Ordinal) >= 0)
                 return true;
+        }
         return false;
     }
 
@@ -63,15 +77,18 @@ public sealed partial class ProtobufCompiler
     private static CodeEmitter.Resolver BuildResolver(FileDescriptorSet set)
     {
         var map = new Dictionary<string, DescriptorProto>();
+
         foreach (var file in set.Files)
         {
             var prefix = string.IsNullOrEmpty(file.Package) ? "" : file.Package;
+
             foreach (var msg in file.MessageTypes)
+            {
                 Index(msg, prefix, map);
+            }
         }
 
-        return name =>
-        {
+        return name => {
             var key = name.TrimStart('.');
             return map.TryGetValue(key, out var d) ? d : null;
         };
@@ -81,8 +98,11 @@ public sealed partial class ProtobufCompiler
     {
         var fq = string.IsNullOrEmpty(prefix) ? d.Name : $"{prefix}.{d.Name}";
         map[fq] = d;
+
         foreach (var nested in d.NestedTypes)
+        {
             Index(nested, fq, map);
+        }
     }
 
     /// <summary>
@@ -93,17 +113,23 @@ public sealed partial class ProtobufCompiler
     private static CodeEmitter.CsName BuildCsNames(FileDescriptorSet set)
     {
         var map = new Dictionary<string, string>();
+
         foreach (var file in set.Files)
         {
             var prefix = string.IsNullOrEmpty(file.Package) ? "" : file.Package;
+
             foreach (var msg in file.MessageTypes)
+            {
                 IndexCs(msg, prefix, "", map);
+            }
+
             foreach (var e in file.EnumTypes)
+            {
                 map[string.IsNullOrEmpty(prefix) ? e.Name : $"{prefix}.{e.Name}"] = CodeEmitter.StripPrefix(e.Name);
+            }
         }
 
-        return name =>
-        {
+        return name => {
             var key = name.TrimStart('.');
             return map.TryGetValue(key, out var v) ? v : null;
         };
@@ -117,15 +143,22 @@ public sealed partial class ProtobufCompiler
         // Nested types are emitted inside a `Types` container class (see EmitPoco), so their
         // dotted C# path gains a `.Types` segment per level of message nesting.
         var nestedPrefix = $"{cs}.Types";
+
         foreach (var nested in d.NestedTypes)
+        {
             IndexCs(nested, fq, nestedPrefix, map);
+        }
+
         foreach (var e in d.EnumTypes)
+        {
             map[$"{fq}.{e.Name}"] = $"{nestedPrefix}.{CodeEmitter.StripPrefix(e.Name)}";
+        }
     }
 
     private static Dictionary<string, int> ScanCmdIds(IEnumerable<Proto> files)
     {
         var map = new Dictionary<string, int>();
+
         foreach (var f in files)
         {
             // Preferred: a `// CmdId: <n>` comment immediately preceding a message.
@@ -140,7 +173,9 @@ public sealed partial class ProtobufCompiler
             {
                 var name = m.Groups[1].Value;
                 if (map.ContainsKey(name)) continue;
+
                 var e = Regex.Match(m.Groups[2].Value, @"CMD_ID\s*=\s*(-?\d+)");
+
                 if (e.Success && int.TryParse(e.Groups[1].Value, out var id))
                     map[name] = id;
             }

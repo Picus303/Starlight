@@ -9,8 +9,7 @@ namespace Starlight.Protobuf.Registry;
 /// </summary>
 public static class ProtocolHelper
 {
-    private static Lazy<IProtocolRegistryProvider> _default = new(
-        () => new ProtocolRegistryProvider(DiscoverRegistries()));
+    private static Lazy<IProtocolRegistryProvider> _default = new(() => new ProtocolRegistryProvider(DiscoverRegistries()));
 
     /// <summary>
     /// The process-wide provider. Reads lazily by scanning loaded assemblies;
@@ -39,8 +38,11 @@ public static class ProtocolHelper
         assemblies ??= AppDomain.CurrentDomain.GetAssemblies();
 
         var found = new List<ProtocolRegistry>();
+
         foreach (var assembly in assemblies)
+        {
             CollectFrom(assembly, found);
+        }
 
         return found;
     }
@@ -58,6 +60,7 @@ public static class ProtocolHelper
         foreach (var path in Directory.EnumerateFiles(directory, "*.dll"))
         {
             Assembly assembly;
+
             try
             {
                 assembly = Assembly.LoadFrom(path);
@@ -76,6 +79,7 @@ public static class ProtocolHelper
     private static void CollectFrom(Assembly assembly, List<ProtocolRegistry> sink)
     {
         Type[] types;
+
         try
         {
             types = assembly.GetTypes();
@@ -93,6 +97,7 @@ public static class ProtocolHelper
         {
             if (type is null || type.IsAbstract || !typeof(ProtocolRegistry).IsAssignableFrom(type))
                 continue;
+
             if (type.GetConstructor(Type.EmptyTypes) is null)
                 continue;
 

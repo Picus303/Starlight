@@ -69,11 +69,12 @@ public sealed class VersionDetectionTests
     public void FirstPacketCollision_PrefersNewestVersion()
     {
         const int sharedCmdId = 4242;
+
         var provider = new ProtocolRegistryProvider(
         [
             new FakeRegistry("V64", sharedCmdId),
             new FakeRegistry("V66", sharedCmdId),
-            new FakeRegistry("V65", sharedCmdId),
+            new FakeRegistry("V65", sharedCmdId)
         ]);
 
         Assert.Equal("V66", provider.ResolveByFirstPacket(sharedCmdId)!.Version);
@@ -86,7 +87,7 @@ public sealed class VersionDetectionTests
             new ProtocolRegistryProvider(
             [
                 new FakeRegistry("V66", 1),
-                new FakeRegistry("V66", 2),
+                new FakeRegistry("V66", 2)
             ]));
 
         Assert.Contains("V66", ex.Message);
@@ -113,7 +114,11 @@ public sealed class VersionDetectionTests
         public override int GetCmdId(Starlight.Protobuf.Core.IMessage message) => throw new NotSupportedException();
         public override Starlight.Protobuf.Core.IMessage Create(int cmdId) => throw new NotSupportedException();
         public override int CalculateSize(Starlight.Protobuf.Core.IMessage message) => throw new NotSupportedException();
-        public override void Serialize(Starlight.Protobuf.Core.IMessage message, CodedOutputStream output) => throw new NotSupportedException();
-        public override void Deserialize(Starlight.Protobuf.Core.IMessage message, CodedInputStream input) => throw new NotSupportedException();
+
+        public override void Serialize(Starlight.Protobuf.Core.IMessage message, CodedOutputStream output) =>
+            throw new NotSupportedException();
+
+        public override void Deserialize(Starlight.Protobuf.Core.IMessage message, CodedInputStream input) =>
+            throw new NotSupportedException();
     }
 }

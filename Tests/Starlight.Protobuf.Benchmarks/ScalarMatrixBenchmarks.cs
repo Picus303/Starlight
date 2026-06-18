@@ -34,34 +34,47 @@ public class ScalarMatrixBenchmarks
         _starlightBytes = Array.ConvertAll(_starlight, m => m.ToByteArray(Serializer));
     }
 
-    [BenchmarkCategory("Serialize"), Benchmark(Baseline = true)]
+    [BenchmarkCategory("Serialize")] [Benchmark(Baseline = true)]
     public long Google_Serialize()
     {
         long total = 0;
-        foreach (var message in _google) total += message.ToByteArray().Length;
+
+        foreach (var message in _google)
+        {
+            total += message.ToByteArray().Length;
+        }
         return total;
     }
 
-    [BenchmarkCategory("Serialize"), Benchmark]
+    [BenchmarkCategory("Serialize")] [Benchmark]
     public long Starlight_Serialize()
     {
         long total = 0;
-        foreach (var message in _starlight) total += message.ToByteArray(Serializer).Length;
+
+        foreach (var message in _starlight)
+        {
+            total += message.ToByteArray(Serializer).Length;
+        }
         return total;
     }
 
-    [BenchmarkCategory("Deserialize"), Benchmark(Baseline = true)]
+    [BenchmarkCategory("Deserialize")] [Benchmark(Baseline = true)]
     public long Google_Deserialize()
     {
         long total = 0;
-        foreach (var bytes in _googleBytes) total += GGoogle.ScalarMatrix.Parser.ParseFrom(bytes).FInt32;
+
+        foreach (var bytes in _googleBytes)
+        {
+            total += GGoogle.ScalarMatrix.Parser.ParseFrom(bytes).FInt32;
+        }
         return total;
     }
 
-    [BenchmarkCategory("Deserialize"), Benchmark]
+    [BenchmarkCategory("Deserialize")] [Benchmark]
     public long Starlight_Deserialize()
     {
         long total = 0;
+
         foreach (var bytes in _starlightBytes)
         {
             var message = new ScalarMatrix();

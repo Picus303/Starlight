@@ -64,21 +64,25 @@ internal static partial class CodeEmitter
     {
         private readonly Dictionary<string, Dictionary<string, List<string>>> _map;
 
-        public AltsTable(Dictionary<string, Dictionary<string, List<string>>> map) => _map = map;
+        public AltsTable(Dictionary<string, Dictionary<string, List<string>>> map)
+        {
+            _map = map;
+        }
 
         public IReadOnlyList<string> Get(string message, string field) =>
-            _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var a)
-                ? a
-                : System.Array.Empty<string>();
+            _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var a) ? a : System.Array.Empty<string>();
     }
 
     /// <summary>Reads the repeated <c>alts</c> field option off every message in the set into an <see cref="AltsTable"/>.</summary>
     public static AltsTable ReadAlts(FileDescriptorSet set)
     {
         var map = new Dictionary<string, Dictionary<string, List<string>>>();
+
         foreach (var file in set.Files)
-            foreach (var msg in file.MessageTypes)
-                ReadMessageAlts(msg, map);
+        foreach (var msg in file.MessageTypes)
+        {
+            ReadMessageAlts(msg, map);
+        }
         return new AltsTable(map);
     }
 
@@ -95,7 +99,9 @@ internal static partial class CodeEmitter
         }
 
         foreach (var nested in msg.NestedTypes)
+        {
             ReadMessageAlts(nested, map);
+        }
     }
 
     private static List<string> ReadFieldAlts(FieldOptions? options)
@@ -108,6 +114,7 @@ internal static partial class CodeEmitter
         foreach (var opt in options.UninterpretedOptions)
         {
             if (opt.Names.Count != 1 || opt.Names[0].name_part != "alts") continue;
+
             var value = opt.AggregateValue ?? "";
             if (value.Length != 0) alts.Add(value);
         }
@@ -123,23 +130,28 @@ internal static partial class CodeEmitter
     /// field is then not serialized for that version).
     /// </summary>
     internal static FieldDescriptorProto? MatchVersionField(
-        FieldDescriptorProto baseField, string baseMsgName,
-        Dictionary<string, FieldDescriptorProto> versionByName, AltsTable? alts)
+        FieldDescriptorProto baseField,
+        string baseMsgName,
+        Dictionary<string, FieldDescriptorProto> versionByName,
+        AltsTable? alts
+    )
     {
         if (versionByName.TryGetValue(StripPrefix(baseField.Name), out var direct)) return direct;
+
         if (alts is not null)
             foreach (var alt in alts.Get(baseMsgName, baseField.Name))
+            {
                 if (versionByName.TryGetValue(StripPrefix(alt), out var matched)) return matched;
+            }
         return null;
     }
 
     /// <summary>Integer kinds the transforms apply to. Floats, bools, strings, enums and messages are excluded.</summary>
-    internal static bool IsTransformable(FType type) => type switch
-    {
+    internal static bool IsTransformable(FType type) => type switch {
         FType.TypeInt32 or FType.TypeInt64 or FType.TypeUint32 or FType.TypeUint64
             or FType.TypeSint32 or FType.TypeSint64 or FType.TypeFixed32 or FType.TypeFixed64
             or FType.TypeSfixed32 or FType.TypeSfixed64 => true,
-        _ => false,
+        _ => false
     };
 
     // ---- codegen ------------------------------------------------------------
@@ -150,6 +162,7 @@ internal static partial class CodeEmitter
         if (t is null) return valueExpr;
 
         var inner = $"(long){valueExpr}";
+
         for (var i = 0; i < t.Ops.Length; i++)
             inner = $"({inner} {t.Ops[i]} {Lit(t.Operands[i])})";
         return $"unchecked(({csType})({inner}))";
@@ -161,6 +174,7 @@ internal static partial class CodeEmitter
         if (t is null) return readExpr;
 
         var inner = $"(long){readExpr}";
+
         for (var i = t.Ops.Length - 1; i >= 0; i--)
             inner = $"({inner} {Inverse(t.Ops[i])} {Lit(t.Operands[i])})";
         return $"unchecked(({csType})({inner}))";
@@ -171,7 +185,7 @@ internal static partial class CodeEmitter
     private static string Lit(long v) => $"({v.ToString(CultureInfo.InvariantCulture)}L)";
 
     private static long? ParseOperand(string value) =>
-        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?) null;
+        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?)null;
 
     // ---- extraction ---------------------------------------------------------
 
@@ -190,8 +204,10 @@ internal static partial class CodeEmitter
         var violations = new List<MaskViolation>();
 
         foreach (var file in set.Files)
-            foreach (var msg in file.MessageTypes)
-                ReadMessageTransforms(msg, map, violations);
+        foreach (var msg in file.MessageTypes)
+        {
+            ReadMessageTransforms(msg, map, violations);
+        }
 
         return new TransformTable(map, violations);
     }
@@ -199,7 +215,8 @@ internal static partial class CodeEmitter
     private static void ReadMessageTransforms(
         DescriptorProto msg,
         Dictionary<string, Dictionary<string, Transform>> map,
-        List<MaskViolation> violations)
+        List<MaskViolation> violations
+    )
     {
         foreach (var field in msg.Fields)
         {
@@ -212,7 +229,9 @@ internal static partial class CodeEmitter
         }
 
         foreach (var nested in msg.NestedTypes)
+        {
             ReadMessageTransforms(nested, map, violations);
+        }
     }
 
     private static Transform? BuildTransform(FieldOptions? options, string message, string field, List<MaskViolation> violations)
@@ -228,6 +247,7 @@ internal static partial class CodeEmitter
             if (opt.Names.Count != 1) continue;
 
             var value = opt.AggregateValue ?? "";
+
             switch (opt.Names[0].name_part)
             {
                 case "add": add = ParseOperand(value); break;
@@ -254,13 +274,14 @@ internal static partial class CodeEmitter
         if (add.HasValue && xor.HasValue)
         {
             // fop = "first operation": which of add/xor is applied first on encode.
-            return fop == "xor"
-                ? new Transform { Ops = "^+", Operands = new[] { xor.Value, add.Value } }
-                : new Transform { Ops = "+^", Operands = new[] { add.Value, xor.Value } };
+            return fop == "xor" ?
+                new Transform { Ops = "^+", Operands = new[] { xor.Value, add.Value } } :
+                new Transform { Ops = "+^", Operands = new[] { add.Value, xor.Value } };
         }
 
         if (add.HasValue) return new Transform { Ops = "+", Operands = new[] { add.Value } };
         if (xor.HasValue) return new Transform { Ops = "^", Operands = new[] { xor.Value } };
+
         return null;
     }
 
@@ -283,17 +304,21 @@ internal static partial class CodeEmitter
 
             // Find the last top-level binary operator (the outermost / last-applied op).
             var depth = 0;
+
             for (var i = expr.Length - 1; i > 0; i--)
             {
                 var c = expr[i];
+
                 if (c == ')') depth++;
                 else if (c == '(') depth--;
                 else if (depth == 0 && (c == '+' || c == '-' || c == '^'))
                 {
                     var right = expr.Substring(i + 1).Trim();
+
                     if (!long.TryParse(right, NumberStyles.Integer, CultureInfo.InvariantCulture, out var operand))
                         return false;
-                    if (!Walk(expr.Substring(0, i))) return false;
+                    if (!Walk(expr.Substring(startIndex: 0, i))) return false;
+
                     ops.Append(c);
                     operands.Add(operand);
                     return true;
@@ -321,6 +346,7 @@ internal static partial class CodeEmitter
     private static bool IsSafeMaskGrammar(string mask)
     {
         if (!TryTokenizeMask(mask, out var tokens)) return false;
+
         var pos = 0;
         return ParseMaskExpr(tokens, ref pos) && pos == tokens.Count;
     }
@@ -329,32 +355,36 @@ internal static partial class CodeEmitter
     {
         tokens = new List<string>();
         var i = 0;
+
         while (i < s.Length)
         {
             var c = s[i];
-            if (char.IsWhiteSpace(c)) { i++; continue; }
+
+            if (char.IsWhiteSpace(c))
+            {
+                i++;
+                continue;
+            }
 
             if (c is '(' or ')' or '+' or '-' or '^')
             {
                 tokens.Add(c.ToString());
                 i++;
-            }
-            else if (char.IsDigit(c))
+            } else if (char.IsDigit(c))
             {
                 var start = i;
                 while (i < s.Length && char.IsDigit(s[i])) i++;
                 tokens.Add(s.Substring(start, i - start));
-            }
-            else if (char.IsLetter(c) || c == '_')
+            } else if (char.IsLetter(c) || c == '_')
             {
                 var start = i;
                 while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) i++;
                 // The only legal identifier is the whole word `value`; `value1`, `valuevalue`,
                 // `System`, etc. are read as one run and rejected here.
                 if (s.Substring(start, i - start) != "value") return false;
+
                 tokens.Add("value");
-            }
-            else
+            } else
             {
                 return false;
             }
@@ -366,6 +396,7 @@ internal static partial class CodeEmitter
     private static bool ParseMaskExpr(List<string> t, ref int p)
     {
         if (!ParseMaskUnary(t, ref p)) return false;
+
         while (p < t.Count && (t[p] == "+" || t[p] == "-" || t[p] == "^"))
         {
             p++;
@@ -386,6 +417,7 @@ internal static partial class CodeEmitter
         if (p >= t.Count) return false;
 
         var tok = t[p];
+
         if (tok == "value" || char.IsDigit(tok[0]))
         {
             p++;
@@ -397,6 +429,7 @@ internal static partial class CodeEmitter
             p++;
             if (!ParseMaskExpr(t, ref p)) return false;
             if (p >= t.Count || t[p] != ")") return false;
+
             p++;
             return true;
         }
@@ -411,15 +444,22 @@ internal static partial class CodeEmitter
             // Only strip when the leading '(' matches the trailing ')'.
             var depth = 0;
             var wraps = true;
+
             for (var i = 0; i < expr.Length; i++)
             {
                 if (expr[i] == '(') depth++;
                 else if (expr[i] == ')') depth--;
-                if (depth == 0 && i < expr.Length - 1) { wraps = false; break; }
+
+                if (depth == 0 && i < expr.Length - 1)
+                {
+                    wraps = false;
+                    break;
+                }
             }
 
             if (!wraps) break;
-            expr = expr.Substring(1, expr.Length - 2).Trim();
+
+            expr = expr.Substring(startIndex: 1, expr.Length - 2).Trim();
         }
 
         return expr;

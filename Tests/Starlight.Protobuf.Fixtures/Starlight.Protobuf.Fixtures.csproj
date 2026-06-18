@@ -9,21 +9,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Libraries\Starlight.Protobuf\Starlight.Protobuf.csproj" />
-      <ProjectReference Include="..\..\Libraries\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\..\Libraries\Starlight.Protobuf\Starlight.Protobuf.csproj"/>
+        <ProjectReference Include="..\..\Libraries\Starlight.Protobuf.Compiler\Starlight.Protobuf.Compiler.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
     <!-- Synthetic test schemas, compiled by the Starlight protobuf generator the
          same way the real protocol is, but kept out of the protocol assembly. -->
     <ItemGroup>
-      <AdditionalFiles Include="Base\**\*.proto" SLProtoRole="Base" />
-      <AdditionalFiles Include="Protobuf\**\*.proto" SLProtoRole="Version" />
-      <AdditionalFiles Include="extra.proto" SLProtoRole="Independent" />
-      <AdditionalFiles Include="independent.proto" SLProtoRole="Independent" />
+        <AdditionalFiles Include="Base\**\*.proto" SLProtoRole="Base"/>
+        <AdditionalFiles Include="Protobuf\**\*.proto" SLProtoRole="Version"/>
+        <AdditionalFiles Include="extra.proto" SLProtoRole="Independent"/>
+        <AdditionalFiles Include="independent.proto" SLProtoRole="Independent"/>
     </ItemGroup>
 
     <ItemGroup>
-      <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="SLProtoRole" />
+        <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="SLProtoRole"/>
     </ItemGroup>
 
 </Project>
