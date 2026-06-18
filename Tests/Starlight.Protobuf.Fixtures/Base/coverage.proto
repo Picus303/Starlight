@@ -10,6 +10,7 @@ message CoverageSub {
   int32 value = 1;
 }
 
+// CmdId: 4242
 message Coverage {
   optional int32 opt_int = 1;
   optional string opt_str = 2;
@@ -19,6 +20,17 @@ message Coverage {
     int32 choice_int = 5;
     CoverageSub choice_msg = 6;
   }
+}
+
+// A synthetic "first packet" message. Its name is one the compiler treats as a
+// first-packet (KnownFirst) message, so the generated registry surfaces a real
+// first-packet CmdId — exercising version detection without the live protocol.
+// CmdId: 700
+message PingReq {
+  string client_id = 1;
+  uint32 seq = 2;
+  repeated uint32 tags = 3;
+  bool flag = 4;
 }
 
 // Every reflective-engine branch in one message, exercised only by the remap

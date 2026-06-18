@@ -1,4 +1,3 @@
-using System.Collections;
 using Google.Protobuf;
 using Starlight.Protobuf.Inspection;
 using Starlight.Protobuf.Reflection;

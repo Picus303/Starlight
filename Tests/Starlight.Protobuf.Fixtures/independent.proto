@@ -1,0 +1,23 @@
+// Synthetic version-independent messages (no version system, own their single
+// serializer). Mirror the real protocol's transport-level packets so the tests
+// exercise the self-serializer and the field/message name-collision suffix
+// without depending on the live protocol.
+
+syntax = "proto3";
+
+option csharp_namespace = "Starlight.Protobuf.Fixtures";
+
+message Frame {
+  uint32 sequence_id = 1;
+  uint64 sent_ms = 2;
+  uint32 flags = 3;
+  uint32 length = 4;
+  uint32 index = 5;
+  uint32 total = 6;
+}
+
+// Field `crate` collides with the message name `Crate`, so the generated
+// property is suffixed to `Crate_`.
+message Crate {
+  bytes crate = 1;
+}

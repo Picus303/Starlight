@@ -25,6 +25,19 @@ message Coverage {
   }
 }
 
+// Version dump of the first-packet message. Field numbers are shifted from the
+// base structural ones so the emitted wire tags prove version-number use:
+//   seq        -> wire 4  (tag 0x20)
+//   client_id  -> wire 5  (tag 0x2A)
+//   tags       -> wire 6  (tag 0x32, packed)
+//   flag       -> wire 7  (tag 0x38)
+message PingReq {
+  string client_id = 5;
+  uint32 seq = 4;
+  repeated uint32 tags = 6;
+  bool flag = 7;
+}
+
 // Version dump of the remap probe; field numbers shifted so the default wire
 // numbers differ from the base structural ones (remap tests rewrite these).
 enum RemapEnum {

@@ -1,10 +1,8 @@
 using BenchmarkDotNet.Running;
 using Google.Protobuf;
-using Starlight.Game.Protocol.V66;
 using Starlight.Protobuf.Core;
 using Starlight.Protobuf.Benchmarks;
 using Starlight.Protobuf.Fixtures.V99;
-using GGoogle = Starlight.Protobuf.Benchmarks.Google;
 
 // `--verify` (or no BenchmarkDotNet filter) prints the encoded sizes so the
 // comparison can be confirmed fair before spending minutes benchmarking: both
@@ -15,8 +13,6 @@ if (args.Length == 1 && args[0] == "--verify")
         Samples.StarlightScalar().ToByteArray(ScalarMatrixSerializer.Instance));
     Verify("Coverage", Samples.GoogleCoverage().ToByteArray(),
         Samples.StarlightCoverage().ToByteArray(CoverageSerializer.Instance));
-    Verify("GetPlayerTokenReq", Samples.GoogleToken().ToByteArray(),
-        Samples.StarlightToken().ToByteArray(GetPlayerTokenReqSerializer.Instance));
     return;
 }
 

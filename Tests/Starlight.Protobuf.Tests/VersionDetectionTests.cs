@@ -1,16 +1,17 @@
 using Google.Protobuf;
 using Microsoft.Extensions.DependencyInjection;
-using Starlight.Game.Protocol;
-using Starlight.Game.Protocol.V66;
 using Starlight.Protobuf.DependencyInjection;
+using Starlight.Protobuf.Fixtures;
+using Starlight.Protobuf.Fixtures.V99;
 using Starlight.Protobuf.Registry;
 using Xunit;
 
 namespace Starlight.Protobuf.Tests;
 
 /// <summary>
-/// Version detection + DI initialization. Covers assembly discovery,
-/// first-packet resolution, version lookup, collision tie-break, and the
+/// Version detection + DI initialization, driven entirely by the synthetic
+/// fixtures (no live protocol). Covers assembly discovery, first-packet
+/// resolution, version lookup, collision tie-break, and the
 /// <c>AddStarlightProtocol</c> DI extension.
 /// </summary>
 public sealed class VersionDetectionTests
@@ -19,34 +20,34 @@ public sealed class VersionDetectionTests
         new ProtocolRegistryProvider(ProtocolHelper.DiscoverRegistries());
 
     // The first-packet cmd id is version-specific and lives on the registry, not
-    // the canonical base POCO.
-    private static readonly int GetPlayerTokenReqCmdId;
+    // the canonical base POCO. PingReq is a first-packet message in the fixtures.
+    private static readonly int PingReqCmdId;
 
-    // Since the base/version split, V66ProtocolRegistry lives in its own assembly.
-    // Ambient discovery (AppDomain.GetAssemblies) only sees *loaded* assemblies and
-    // a version assembly loads lazily on first type use. The explicit static ctor
-    // both loads it and (by disabling beforefieldinit) runs before the first test,
-    // so even version-string-only lookups find V66.
+    // The compiled fixture registry lives in the fixtures assembly. Ambient
+    // discovery (AppDomain.GetAssemblies) only sees *loaded* assemblies, and an
+    // assembly loads lazily on first type use. The explicit static ctor both
+    // loads it and (by disabling beforefieldinit) runs before the first test, so
+    // even version-string-only lookups find V99.
     static VersionDetectionTests()
     {
-        var registry = new V66ProtocolRegistry();
-        GetPlayerTokenReqCmdId = registry.GetCmdId(new GetPlayerTokenReq());
+        var registry = new V99ProtocolRegistry();
+        PingReqCmdId = registry.GetCmdId(new PingReq());
     }
 
     [Fact]
-    public void Discover_FindsCompiledV66Registry()
+    public void Discover_FindsCompiledV99Registry()
     {
         var registries = ProtocolHelper.DiscoverRegistries();
-        Assert.Contains(registries, r => r is V66ProtocolRegistry);
+        Assert.Contains(registries, r => r is V99ProtocolRegistry);
     }
 
     [Fact]
-    public void ResolveByFirstPacket_ReturnsV66_ForGetPlayerTokenReq()
+    public void ResolveByFirstPacket_ReturnsV99_ForPingReq()
     {
-        var registry = Provider().ResolveByFirstPacket(GetPlayerTokenReqCmdId);
+        var registry = Provider().ResolveByFirstPacket(PingReqCmdId);
 
         Assert.NotNull(registry);
-        Assert.Equal("V66", registry!.Version);
+        Assert.Equal("V99", registry!.Version);
     }
 
     [Fact]
@@ -59,9 +60,9 @@ public sealed class VersionDetectionTests
     public void GetByVersion_IsCaseInsensitive()
     {
         var provider = Provider();
-        Assert.NotNull(provider.GetByVersion("V66"));
-        Assert.NotNull(provider.GetByVersion("v66"));
-        Assert.Null(provider.GetByVersion("V999"));
+        Assert.NotNull(provider.GetByVersion("V99"));
+        Assert.NotNull(provider.GetByVersion("v99"));
+        Assert.Null(provider.GetByVersion("V123"));
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public sealed class VersionDetectionTests
         var provider = sp.GetRequiredService<IProtocolRegistryProvider>();
 
         Assert.Same(provider, sp.GetRequiredService<IProtocolRegistryProvider>());
-        Assert.Equal("V66", provider.ResolveByFirstPacket(GetPlayerTokenReqCmdId)!.Version);
+        Assert.Equal("V99", provider.ResolveByFirstPacket(PingReqCmdId)!.Version);
     }
 
     private sealed class FakeRegistry(string version, params int[] knownFirst) : ProtocolRegistry

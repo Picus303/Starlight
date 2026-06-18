@@ -1,4 +1,3 @@
-using Starlight.Game.Protocol;
 using Starlight.Protobuf.Core;
 using Starlight.Protobuf.Fixtures;
 using Starlight.Protobuf.Fixtures.V99;
@@ -8,9 +7,9 @@ namespace Starlight.Protobuf.Tests;
 
 /// <summary>
 /// Coverage: proto3 <c>optional</c> explicit presence, <c>oneof</c>
-/// discriminated unions, and the version-independent (<c>extra.proto</c>) path.
-/// The version dump shifts field numbers away from the base structural ones, so
-/// these also prove name-match correlation survives presence/oneof.
+/// discriminated unions, and the version-independent (<c>independent.proto</c>)
+/// path. The version dump shifts field numbers away from the base structural
+/// ones, so these also prove name-match correlation survives presence/oneof.
 /// </summary>
 public sealed class CoverageSerializerTests
 {
@@ -125,64 +124,64 @@ public sealed class CoverageSerializerTests
         Assert.Equal(123, restored.ChoiceInt);
     }
 
-    // ---- version-independent (extra.proto -> Starlight.Game.Protocol) -------
+    // ---- version-independent (independent.proto) ----------------------------
 
     [Fact]
-    public void Independent_PacketHead_RoundTrips()
+    public void Independent_Frame_RoundTrips()
     {
-        var original = new PacketHead
+        var original = new Frame
         {
-            ClientSequenceId = 11,
+            SequenceId = 11,
             SentMs = 1717000000000,
             Flags = 6,
-            DecompressedLen = 2048,
-            ChunkId = 1,
-            TotalChunksCount = 4,
+            Length = 2048,
+            Index = 1,
+            Total = 4,
         };
 
-        var restored = new PacketHead();
-        restored.MergeFrom(PacketHeadSerializer.Instance, original.ToByteArray(PacketHeadSerializer.Instance));
+        var restored = new Frame();
+        restored.MergeFrom(FrameSerializer.Instance, original.ToByteArray(FrameSerializer.Instance));
 
-        Assert.Equal(original.ClientSequenceId, restored.ClientSequenceId);
+        Assert.Equal(original.SequenceId, restored.SequenceId);
         Assert.Equal(original.SentMs, restored.SentMs);
         Assert.Equal(original.Flags, restored.Flags);
-        Assert.Equal(original.DecompressedLen, restored.DecompressedLen);
-        Assert.Equal(original.ChunkId, restored.ChunkId);
-        Assert.Equal(original.TotalChunksCount, restored.TotalChunksCount);
+        Assert.Equal(original.Length, restored.Length);
+        Assert.Equal(original.Index, restored.Index);
+        Assert.Equal(original.Total, restored.Total);
     }
 
     [Fact]
-    public void Independent_PacketHead_RoundTrips_WithoutSpecifyingSerializer()
+    public void Independent_Frame_RoundTrips_WithoutSpecifyingSerializer()
     {
         // Version-independent messages own their single serializer, so the
         // argument-free extensions resolve it with no version lookup.
-        var original = new PacketHead { ClientSequenceId = 11, Flags = 6, TotalChunksCount = 4 };
+        var original = new Frame { SequenceId = 11, Flags = 6, Total = 4 };
 
-        var restored = new PacketHead();
+        var restored = new Frame();
         restored.MergeFrom(original.ToByteArray());
 
-        Assert.Equal(original.ClientSequenceId, restored.ClientSequenceId);
+        Assert.Equal(original.SequenceId, restored.SequenceId);
         Assert.Equal(original.Flags, restored.Flags);
-        Assert.Equal(original.TotalChunksCount, restored.TotalChunksCount);
+        Assert.Equal(original.Total, restored.Total);
     }
 
     [Fact]
     public void Independent_SelfSerializer_MatchesExplicitInstance()
     {
-        var msg = new PacketHead { ChunkId = 7 };
-        Assert.Equal(msg.ToByteArray(PacketHeadSerializer.Instance), msg.ToByteArray());
-        Assert.Same(PacketHeadSerializer.Instance, PacketHead.Serializer);
+        var msg = new Frame { Index = 7 };
+        Assert.Equal(msg.ToByteArray(FrameSerializer.Instance), msg.ToByteArray());
+        Assert.Same(FrameSerializer.Instance, Frame.Serializer);
     }
 
     [Fact]
-    public void Independent_Chunk_PropertyCollisionSuffix_RoundTrips()
+    public void Independent_Crate_PropertyCollisionSuffix_RoundTrips()
     {
-        // Field `chunk` collides with message `Chunk`, so the property is `Chunk_`.
-        var original = new Chunk { Chunk_ = Google.Protobuf.ByteString.CopyFromUtf8("payload") };
+        // Field `crate` collides with message `Crate`, so the property is `Crate_`.
+        var original = new Crate { Crate_ = Google.Protobuf.ByteString.CopyFromUtf8("payload") };
 
-        var restored = new Chunk();
-        restored.MergeFrom(ChunkSerializer.Instance, original.ToByteArray(ChunkSerializer.Instance));
+        var restored = new Crate();
+        restored.MergeFrom(CrateSerializer.Instance, original.ToByteArray(CrateSerializer.Instance));
 
-        Assert.Equal(original.Chunk_, restored.Chunk_);
+        Assert.Equal(original.Crate_, restored.Crate_);
     }
 }

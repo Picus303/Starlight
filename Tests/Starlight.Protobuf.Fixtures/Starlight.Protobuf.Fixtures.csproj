@@ -19,6 +19,7 @@
       <AdditionalFiles Include="Base\**\*.proto" SLProtoRole="Base" />
       <AdditionalFiles Include="Protobuf\**\*.proto" SLProtoRole="Version" />
       <AdditionalFiles Include="extra.proto" SLProtoRole="Independent" />
+      <AdditionalFiles Include="independent.proto" SLProtoRole="Independent" />
     </ItemGroup>
 
     <ItemGroup>
