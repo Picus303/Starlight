@@ -53,7 +53,7 @@ jobs:
               run: echo "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
 
             - name: Clean up code with .editorconfig
-              run: jb cleanupcode Starlight.slnx --profile="Built-in: Full Cleanup" --verbosity=WARN
+              run: 'jb cleanupcode Starlight.slnx --profile="Built-in: Full Cleanup" --verbosity=WARN'
 
             - name: Verify code matches .editorconfig
               shell: pwsh
