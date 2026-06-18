@@ -29,7 +29,7 @@ public sealed partial class ProtobufCompiler
 
     private static void ValidateMessage(SourceProductionContext ctx, DescriptorProto msg, bool hasCmdId, bool selfSerializable)
     {
-        Report(ctx, ReservedNames.CheckKeyword("message", msg.Name));
+        Report(ctx, ReservedNames.CheckKeyword("message", msg.Name, CodeEmitter.StripPrefix(msg.Name)));
 
         foreach (var e in msg.EnumTypes)
             ValidateEnum(ctx, e);
@@ -46,7 +46,7 @@ public sealed partial class ProtobufCompiler
 
     private static void ValidateEnum(SourceProductionContext ctx, EnumDescriptorProto e)
     {
-        Report(ctx, ReservedNames.CheckKeyword("enum", e.Name));
+        Report(ctx, ReservedNames.CheckKeyword("enum", e.Name, CodeEmitter.StripPrefix(e.Name)));
         foreach (var value in e.Values)
             Report(ctx, ReservedNames.CheckKeyword("enum value", value.Name));
     }
@@ -64,11 +64,18 @@ public sealed partial class ProtobufCompiler
     /// type, so a type divergence yields a serializer that reads/writes the wrong
     /// wire format with no compile error. The rule lives in <see cref="FieldCorrelation"/>.
     /// </summary>
-    private static void ValidateFieldTypes(SourceProductionContext ctx, DescriptorProto baseMsg, DescriptorProto versionMsg, string version)
+    private static void ValidateFieldTypes(SourceProductionContext ctx, DescriptorProto baseMsg, DescriptorProto versionMsg, string version, CodeEmitter.AltsTable? alts)
     {
-        foreach (var m in FieldCorrelation.Mismatches(baseMsg.Fields.Select(Shape), versionMsg.Fields.Select(Shape)))
-            ctx.ReportDiagnostic(Diagnostic.Create(FieldTypeMismatchError, Location.None,
-                m.FieldName, baseMsg.Name, m.BaseType, m.VersionType, version));
+        var versionByName = CodeEmitter.FieldsByName(versionMsg.Fields);
+        foreach (var bf in baseMsg.Fields)
+        {
+            if (CodeEmitter.IsUnknownPlaceholder(bf)) continue; // not emitted; round-trips via UnknownFields
+            var vf = CodeEmitter.MatchVersionField(bf, baseMsg.Name, versionByName, alts);
+            if (vf is null) continue;
+            if (FieldCorrelation.Compare(Shape(bf), Shape(vf)) is { } m)
+                ctx.ReportDiagnostic(Diagnostic.Create(FieldTypeMismatchError, Location.None,
+                    m.FieldName, baseMsg.Name, m.BaseType, m.VersionType, version));
+        }
     }
 
     /// <summary>
@@ -80,13 +87,15 @@ public sealed partial class ProtobufCompiler
     /// the <paramref name="baseMsg"/> fields the serializer actually emits.
     /// </summary>
     private static void ValidateTransforms(SourceProductionContext ctx, DescriptorProto baseMsg,
-        DescriptorProto versionMsg, CodeEmitter.TransformTable transforms, CodeEmitter.Resolver resolve)
+        DescriptorProto versionMsg, CodeEmitter.TransformTable transforms, CodeEmitter.Resolver resolve,
+        CodeEmitter.AltsTable? alts)
     {
-        var versionNames = new HashSet<string>(versionMsg.Fields.Select(f => f.Name));
+        var versionByName = CodeEmitter.FieldsByName(versionMsg.Fields);
         foreach (var field in baseMsg.Fields)
         {
-            if (!versionNames.Contains(field.Name)) continue;
-            if (transforms.Get(versionMsg.Name, field.Name) is null) continue;
+            var vf = CodeEmitter.MatchVersionField(field, baseMsg.Name, versionByName, alts);
+            if (vf is null) continue;
+            if (transforms.Get(versionMsg.Name, vf.Name) is null) continue;
 
             var reason = TransformRejection(field, resolve);
             if (reason is not null)
@@ -107,11 +116,14 @@ public sealed partial class ProtobufCompiler
     private static FieldShape Shape(FieldDescriptorProto f)
     {
         var repeated = f.label == Label.LabelRepeated;
+        // Referents compared by prefix-stripped simple name: the '_' custom-name marker
+        // is stripped in emission, so base 'AkaFesDetailInfo' and version '_AkaFesDetailInfo'
+        // denote the same C# type and must not be flagged as a divergence.
         return f.type switch
         {
-            FType.TypeMessage => new FieldShape(f.Name, "message", repeated, CodeEmitter.Simple(f.TypeName)),
-            FType.TypeEnum => new FieldShape(f.Name, "enum", repeated, CodeEmitter.Simple(f.TypeName)),
-            FType.TypeGroup => new FieldShape(f.Name, "group", repeated, CodeEmitter.Simple(f.TypeName)),
+            FType.TypeMessage => new FieldShape(f.Name, "message", repeated, CodeEmitter.TypeIdent(f.TypeName)),
+            FType.TypeEnum => new FieldShape(f.Name, "enum", repeated, CodeEmitter.TypeIdent(f.TypeName)),
+            FType.TypeGroup => new FieldShape(f.Name, "group", repeated, CodeEmitter.TypeIdent(f.TypeName)),
             _ => new FieldShape(f.Name, ProtoKeyword(f.type), repeated),
         };
     }

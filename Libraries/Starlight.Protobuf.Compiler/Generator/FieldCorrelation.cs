@@ -66,7 +66,11 @@ public static class FieldCorrelation
     public static IReadOnlyList<FieldTypeMismatch> Mismatches(
         IEnumerable<FieldShape> baseFields, IEnumerable<FieldShape> versionFields)
     {
-        var versionByName = versionFields.ToDictionary(f => f.Name);
+        // First occurrence wins: de-obfuscated version protos can carry duplicate field
+        // names, and ToDictionary would throw. Mirrors CodeEmitter.FieldsByName.
+        var versionByName = new Dictionary<string, FieldShape>();
+        foreach (var f in versionFields)
+            if (!versionByName.ContainsKey(f.Name)) versionByName[f.Name] = f;
         var mismatches = new List<FieldTypeMismatch>();
         foreach (var b in baseFields)
         {
@@ -77,6 +81,16 @@ public static class FieldCorrelation
 
         return mismatches;
     }
+
+    /// <summary>
+    /// Compares an already-paired base and version field (the pairing may be by name or by
+    /// an <c>alts</c> alternate), returning the mismatch or null when their wire shapes agree.
+    /// The reported field name is the base field's.
+    /// </summary>
+    public static FieldTypeMismatch? Compare(FieldShape baseField, FieldShape versionField) =>
+        Matches(baseField, versionField)
+            ? null
+            : new FieldTypeMismatch(baseField.Name, Describe(baseField), Describe(versionField));
 
     private static bool Matches(FieldShape a, FieldShape b) =>
         a.ProtoType == b.ProtoType && a.Repeated == b.Repeated && a.TypeName == b.TypeName;

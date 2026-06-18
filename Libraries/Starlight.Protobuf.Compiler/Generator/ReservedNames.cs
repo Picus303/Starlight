@@ -55,9 +55,16 @@ public static class ReservedNames
     public static bool IsReservedKeyword(string name) => Keywords.Contains(name);
 
     /// <summary>A verbatim-emitted name (type or enum value) that collides with a C# keyword, else null.</summary>
-    public static NameViolation? CheckKeyword(string kind, string name) =>
-        IsReservedKeyword(name)
-            ? new NameViolation(kind, name, name, "is a reserved C# keyword")
+    public static NameViolation? CheckKeyword(string kind, string name) => CheckKeyword(kind, name, name);
+
+    /// <summary>
+    /// As <see cref="CheckKeyword(string,string)"/> but checks the emitted C# identifier
+    /// (<paramref name="csName"/>, e.g. with a prefix stripped) while reporting the raw
+    /// proto name (<paramref name="protoName"/>).
+    /// </summary>
+    public static NameViolation? CheckKeyword(string kind, string protoName, string csName) =>
+        IsReservedKeyword(csName)
+            ? new NameViolation(kind, protoName, csName, "is a reserved C# keyword")
             : null;
 
     /// <summary>
