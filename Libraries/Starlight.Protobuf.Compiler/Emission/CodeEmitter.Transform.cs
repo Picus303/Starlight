@@ -52,6 +52,87 @@ internal static partial class CodeEmitter
             _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var t) ? t : null;
     }
 
+    // ---- alternate field names (alts) ---------------------------------------
+
+    /// <summary>
+    /// Per-message alternate-name lookup, keyed by message name then base field name. The
+    /// canonical (base) proto declares <c>[alts = "..."]</c> on a field to list the version
+    /// field names that should correlate to it, so a version may rename a field without
+    /// breaking the base&lt;-&gt;version match. Authored on base protos only.
+    /// </summary>
+    internal sealed class AltsTable
+    {
+        private readonly Dictionary<string, Dictionary<string, List<string>>> _map;
+
+        public AltsTable(Dictionary<string, Dictionary<string, List<string>>> map) => _map = map;
+
+        public IReadOnlyList<string> Get(string message, string field) =>
+            _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var a)
+                ? a
+                : System.Array.Empty<string>();
+    }
+
+    /// <summary>Reads the repeated <c>alts</c> field option off every message in the set into an <see cref="AltsTable"/>.</summary>
+    public static AltsTable ReadAlts(FileDescriptorSet set)
+    {
+        var map = new Dictionary<string, Dictionary<string, List<string>>>();
+        foreach (var file in set.Files)
+            foreach (var msg in file.MessageTypes)
+                ReadMessageAlts(msg, map);
+        return new AltsTable(map);
+    }
+
+    private static void ReadMessageAlts(DescriptorProto msg, Dictionary<string, Dictionary<string, List<string>>> map)
+    {
+        foreach (var field in msg.Fields)
+        {
+            var alts = ReadFieldAlts(field.Options);
+            if (alts.Count == 0) continue;
+
+            if (!map.TryGetValue(msg.Name, out var fields))
+                map[msg.Name] = fields = new Dictionary<string, List<string>>();
+            fields[field.Name] = alts;
+        }
+
+        foreach (var nested in msg.NestedTypes)
+            ReadMessageAlts(nested, map);
+    }
+
+    private static List<string> ReadFieldAlts(FieldOptions? options)
+    {
+        var alts = new List<string>();
+        if (options is null) return alts;
+
+        // `alts` is a repeated extension protobuf-net can't resolve, so each value is parked
+        // as a single-part uninterpreted option carrying the (unquoted) string literal.
+        foreach (var opt in options.UninterpretedOptions)
+        {
+            if (opt.Names.Count != 1 || opt.Names[0].name_part != "alts") continue;
+            var value = opt.AggregateValue ?? "";
+            if (value.Length != 0) alts.Add(value);
+        }
+
+        return alts;
+    }
+
+    /// <summary>
+    /// The version field correlated to a base field: matched by prefix-stripped name, or --
+    /// failing that -- by any name the base field lists in its <c>alts</c> option (also
+    /// stripped). The '_' custom-name marker is stripped on both sides, mirroring
+    /// <see cref="FieldsByName"/>. Returns null when the version has no matching field (the
+    /// field is then not serialized for that version).
+    /// </summary>
+    internal static FieldDescriptorProto? MatchVersionField(
+        FieldDescriptorProto baseField, string baseMsgName,
+        Dictionary<string, FieldDescriptorProto> versionByName, AltsTable? alts)
+    {
+        if (versionByName.TryGetValue(StripPrefix(baseField.Name), out var direct)) return direct;
+        if (alts is not null)
+            foreach (var alt in alts.Get(baseMsgName, baseField.Name))
+                if (versionByName.TryGetValue(StripPrefix(alt), out var matched)) return matched;
+        return null;
+    }
+
     /// <summary>Integer kinds the transforms apply to. Floats, bools, strings, enums and messages are excluded.</summary>
     internal static bool IsTransformable(FType type) => type switch
     {
