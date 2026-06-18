@@ -47,7 +47,7 @@ public sealed class ReflectionSchema
     public static ReflectionSchema LoadFromDirectory(string directory, string? version = null)
     {
         var sources = Directory.EnumerateFiles(directory, "*.proto")
-            .ToDictionary(Path.GetFileName, File.ReadAllText);
+            .ToDictionary(file => Path.GetFileName(file)!, File.ReadAllText, StringComparer.Ordinal);
         return Load(sources, version);
     }
 
@@ -94,7 +94,7 @@ public sealed class ReflectionSchema
 
         if (version is not null)
             resolvedVersion = version;
-        else if (set.Files.Select(f => f.Package).FirstOrDefault(p => !string.IsNullOrEmpty(p)) is {} pkg)
+        else if (set.Files.Select(f => f.Package).FirstOrDefault(p => !string.IsNullOrEmpty(p)) is { } pkg)
             resolvedVersion = Capitalize(pkg);
         else
             resolvedVersion = "Reflection";
