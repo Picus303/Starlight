@@ -21,11 +21,11 @@ public sealed class TransformTests
     private static Transformed Sample() => new() { A = 7, B = 1000, C = 42, D = 5, E = 1000 };
 
     // Independent reimplementation of the four proto declarations.
-    private static uint EncA(uint v) => unchecked((uint)((long)v + 100 ^ 12345)); // fop=add
+    private static uint EncA(uint v) => unchecked((uint)(((long)v + 100) ^ 12345)); // fop=add
     private static ulong EncB(ulong v) => unchecked((ulong)(((long)v ^ 999) + 4242)); // fop=xor
-    private static int EncC(int v) => unchecked((int)((long)v - 7 ^ 555)); // mask
+    private static int EncC(int v) => unchecked((int)(((long)v - 7) ^ 555)); // mask
     private static uint EncD(uint v) => unchecked((uint)((long)v + 50000)); // add only
-    private static int EncE(int v) => unchecked((int)((long)v + -123 ^ 9000)); // negative add
+    private static int EncE(int v) => unchecked((int)(((long)v + -123) ^ 9000)); // negative add
 
     [Fact]
     public void FastPath_WritesObfuscatedWireValues()
@@ -33,11 +33,11 @@ public sealed class TransformTests
         var bytes = Sample().ToByteArray(Serializer);
         var input = new CodedInputStream(bytes);
 
-        Assert.Equal(EncA(7), ReadVarintField(input, expectedNumber: 1, () => input.ReadUInt32()));
-        Assert.Equal(EncB(1000), ReadVarintField(input, expectedNumber: 2, () => input.ReadUInt64()));
-        Assert.Equal(EncC(42), ReadVarintField(input, expectedNumber: 3, () => input.ReadInt32()));
-        Assert.Equal(EncD(5), ReadVarintField(input, expectedNumber: 4, () => input.ReadUInt32()));
-        Assert.Equal(EncE(1000), ReadVarintField(input, expectedNumber: 5, () => input.ReadInt32()));
+        Assert.Equal(EncA(7), ReadVarintField(input, 1, () => input.ReadUInt32()));
+        Assert.Equal(EncB(1000), ReadVarintField(input, 2, () => input.ReadUInt64()));
+        Assert.Equal(EncC(42), ReadVarintField(input, 3, () => input.ReadInt32()));
+        Assert.Equal(EncD(5), ReadVarintField(input, 4, () => input.ReadUInt32()));
+        Assert.Equal(EncE(1000), ReadVarintField(input, 5, () => input.ReadInt32()));
         Assert.True(input.IsAtEnd);
     }
 
@@ -65,7 +65,7 @@ public sealed class TransformTests
 
         var restored = new Transformed();
         restored.MergeFrom(Serializer, bytes);
-        Assert.Equal(expected: 0u, restored.D);
+        Assert.Equal(0u, restored.D);
     }
 
     [Fact]
@@ -77,9 +77,7 @@ public sealed class TransformTests
         try
         {
             foreach (var f in Descriptor.Fields)
-            {
                 Assert.True(Descriptor.Remap(f.Name, f.DefaultNumber));
-            }
             Assert.True(Descriptor.HasRemaps);
 
             Assert.Equal(fast, message.ToByteArray(Serializer));
@@ -99,9 +97,7 @@ public sealed class TransformTests
         try
         {
             foreach (var f in Descriptor.Fields)
-            {
                 Descriptor.Remap(f.Name, f.DefaultNumber);
-            }
 
             var restored = new Transformed();
             restored.MergeFrom(Serializer, original.ToByteArray(Serializer));
@@ -118,7 +114,7 @@ public sealed class TransformTests
         }
     }
 
-    private static T ReadVarintField<T>(CodedInputStream input, int expectedNumber, Func<T> read)
+    private static T ReadVarintField<T>(CodedInputStream input, int expectedNumber, System.Func<T> read)
     {
         var tag = input.ReadTag();
         Assert.Equal(expectedNumber, WireFormat.GetTagFieldNumber(tag));

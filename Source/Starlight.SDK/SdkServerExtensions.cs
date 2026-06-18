@@ -14,7 +14,6 @@ public static class SdkServerExtensions
     public static IServiceCollection AddSdkServer(this IServiceCollection collection, StarlightConfig config)
     {
         var provider = DatabaseHelper.ParseProvider(config.Database.ConnectionString, out var connString);
-
         switch (provider)
         {
             case ProviderType.Sqlite:

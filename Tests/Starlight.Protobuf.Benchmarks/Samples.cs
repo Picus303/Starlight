@@ -1,5 +1,6 @@
 using Google.Protobuf;
 using GGoogle = Starlight.Protobuf.Benchmarks.Google;
+using Starlight.Game.Protocol;
 using Starlight.Protobuf.Fixtures;
 
 namespace Starlight.Protobuf.Benchmarks;
@@ -26,7 +27,7 @@ internal static class Samples
         FFloat = 3.14f,
         FDouble = 2.71828,
         FString = "matrix",
-        FBytes = ByteString.CopyFromUtf8("raw")
+        FBytes = ByteString.CopyFromUtf8("raw"),
     };
 
     public static ScalarMatrix StarlightScalar() => new() {
@@ -44,21 +45,55 @@ internal static class Samples
         FFloat = 3.14f,
         FDouble = 2.71828,
         FString = "matrix",
-        FBytes = ByteString.CopyFromUtf8("raw")
+        FBytes = ByteString.CopyFromUtf8("raw"),
     };
 
     public static GGoogle.Coverage GoogleCoverage() => new() {
         OptInt = 42,
         OptStr = "hello",
         Plain = 7,
-        ChoiceMsg = new GGoogle.CoverageSub { Value = 99 }
+        ChoiceMsg = new GGoogle.CoverageSub { Value = 99 },
     };
 
     public static Coverage StarlightCoverage() => new() {
         OptInt = 42,
         OptStr = "hello",
         Plain = 7,
-        ChoiceMsg = new CoverageSub { Value = 99 }
+        ChoiceMsg = new CoverageSub { Value = 99 },
+    };
+
+    public static GGoogle.GetPlayerTokenReq GoogleToken() => new() {
+        PsnId = "psn-account-identifier",
+        Ticket = "auth-ticket-blob-1234567890",
+        OnlineId = "online-display-name",
+        AuthAppid = "app-id-9981",
+        ClientRandKey = "Zm9vYmFyYmF6cXV4cmFuZG9ta2V5",
+        Birthday = "1990-01-01",
+        AccountUid = "acct-7fb3c9e1",
+        AccountToken = "tok-eyJhbGciOiJIUzI1NiJ9-payload",
+        AuthkeyVer = 3,
+        PlatformType = 2,
+        SignType = 1,
+        IsGuest = false,
+        KeyId = 99,
+        Uid = 1234567,
+    };
+
+    public static GetPlayerTokenReq StarlightToken() => new() {
+        PsnId = "psn-account-identifier",
+        Ticket = "auth-ticket-blob-1234567890",
+        OnlineId = "online-display-name",
+        AuthAppid = "app-id-9981",
+        ClientRandKey = "Zm9vYmFyYmF6cXV4cmFuZG9ta2V5",
+        Birthday = "1990-01-01",
+        AccountUid = "acct-7fb3c9e1",
+        AccountToken = "tok-eyJhbGciOiJIUzI1NiJ9-payload",
+        AuthkeyVer = 3,
+        PlatformType = 2,
+        SignType = 1,
+        IsGuest = false,
+        KeyId = 99,
+        Uid = 1234567,
     };
 
     /// <summary>Builds an array of <paramref name="count"/> items from a factory —

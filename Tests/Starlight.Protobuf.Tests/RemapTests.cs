@@ -36,7 +36,7 @@ public sealed class RemapTests
         I = { [5] = new RemapSub { N = 50 } },
         En = RemapEnum.REMAP_TWO,
         Ens = { RemapEnum.REMAP_ONE, RemapEnum.REMAP_TWO },
-        J = 4567
+        J = 4567,
     };
 
     [Fact]
@@ -50,9 +50,7 @@ public sealed class RemapTests
             // Remap every field to its own default number: flips on the reflective
             // path without changing any wire layout, so output must match the fast path.
             foreach (var f in Descriptor.Fields)
-            {
                 Assert.True(Descriptor.Remap(f.Name, f.DefaultNumber));
-            }
             Assert.True(Descriptor.HasRemaps);
 
             Assert.Equal(fast, message.ToByteArray(Serializer));
@@ -71,15 +69,15 @@ public sealed class RemapTests
 
         try
         {
-            Assert.True(Descriptor.Remap("a", wireNumber: 99));
+            Assert.True(Descriptor.Remap("a", 99));
             var bytes = message.ToByteArray(Serializer);
 
             // First (only) field on the wire must now carry field number 99, not 21.
             var input = new CodedInputStream(bytes);
             var tag = input.ReadTag();
-            Assert.Equal(expected: 99, WireFormat.GetTagFieldNumber(tag));
+            Assert.Equal(99, WireFormat.GetTagFieldNumber(tag));
             Assert.Equal(WireFormat.WireType.Varint, WireFormat.GetTagWireType(tag));
-            Assert.Equal(expected: 123, input.ReadInt32());
+            Assert.Equal(123, input.ReadInt32());
         }
         finally
         {
@@ -93,7 +91,7 @@ public sealed class RemapTests
         var message = Sample();
         var fast = message.ToByteArray(Serializer);
 
-        Descriptor.Remap("a", wireNumber: 99);
+        Descriptor.Remap("a", 99);
         Assert.True(Descriptor.HasRemaps);
         Assert.NotEqual(fast, message.ToByteArray(Serializer));
 
@@ -110,9 +108,7 @@ public sealed class RemapTests
         try
         {
             foreach (var f in Descriptor.Fields)
-            {
                 Descriptor.Remap(f.Name, f.DefaultNumber);
-            }
 
             var restored = new RemapProbe();
             restored.MergeFrom(Serializer, original.ToByteArray(Serializer));
@@ -155,7 +151,6 @@ public sealed class RemapTests
         {
             var serialize = () => {
                 var message = new RemapProbe { A = 123 };
-
                 while (!token.IsCancellationRequested)
                 {
                     var bytes = message.ToByteArray(Serializer);
@@ -164,7 +159,7 @@ public sealed class RemapTests
                     var input = new CodedInputStream(bytes);
                     var number = WireFormat.GetTagFieldNumber(input.ReadTag());
                     Assert.True(number is 21 or 99, $"torn field number {number}");
-                    Assert.Equal(expected: 123, input.ReadInt32());
+                    Assert.Equal(123, input.ReadInt32());
                 }
             };
 
@@ -181,22 +176,15 @@ public sealed class RemapTests
             var remap = () => {
                 while (!token.IsCancellationRequested)
                 {
-                    Descriptor.Remap("a", wireNumber: 99);
+                    Descriptor.Remap("a", 99);
                     Descriptor.ClearRemaps();
                 }
             };
 
             var work = new[] { serialize, serialize, lookup, lookup, remap, remap };
-
             var tasks = work.Select(w => Task.Run(() => {
-                try
-                {
-                    w();
-                }
-                catch (Exception e)
-                {
-                    failures.Enqueue(e);
-                }
+                try { w(); }
+                catch (Exception e) { failures.Enqueue(e); }
             }, token)).ToArray();
 
             await Task.WhenAll(tasks);
@@ -222,7 +210,7 @@ public sealed class RemapTests
             restored.MergeFrom(Serializer, original.ToByteArray(Serializer));
 
             Assert.Equal(RemapProbe.ChoiceOneofCase.K, restored.ChoiceCase);
-            Assert.Equal(expected: 77, restored.K!.N);
+            Assert.Equal(77, restored.K!.N);
         }
         finally
         {

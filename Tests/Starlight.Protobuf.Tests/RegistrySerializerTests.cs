@@ -1,32 +1,32 @@
 using Google.Protobuf;
-using Starlight.Protobuf.Fixtures;
-using Starlight.Protobuf.Fixtures.V99;
+using Starlight.Game.Protocol;
+using Starlight.Game.Protocol.V66;
 using Starlight.Protobuf.Inspection;
 using Xunit;
 
 namespace Starlight.Protobuf.Tests;
 
 /// <summary>
-/// Validates the generated fast path against synthetic fixtures (no live
-/// protocol): per-version serializers and the <see cref="V99ProtocolRegistry"/>
-/// dispatcher. Confirms emitted bytes use the version dump's field numbers (not
-/// the canonical base structural ones), round-trip cleanly, capture unknown
-/// version fields, and that the registry metadata is correct.
+/// Validates the generated fast path: per-version serializers and the
+/// <see cref="V66ProtocolRegistry"/> dispatcher. Confirms emitted bytes use the
+/// obfuscated version field numbers (not the canonical base structural ones),
+/// round-trip cleanly, and that the registry metadata is correct.
 /// </summary>
 public sealed class RegistrySerializerTests
 {
-    private static readonly V99ProtocolRegistry Registry = new();
+    private static readonly V66ProtocolRegistry Registry = new();
 
-    // Cmd ids are a per-version concept and live on the registry. The fixture
-    // protos carry `// CmdId:` comments so the generated registry surfaces them.
-    private static readonly int PingReqCmdId = Registry.GetCmdId(new PingReq());
+    // Cmd ids are a per-version concept and live on the registry, not the
+    // canonical base POCO. The base POCO is compiled with no version in scope.
+    private static readonly int GetPlayerTokenReqCmdId = Registry.GetCmdId(new GetPlayerTokenReq());
+    private static readonly int PlayerEnterSceneNotifyCmdId = Registry.GetCmdId(new PlayerEnterSceneNotify());
 
     [Fact]
     public void Serialize_UsesVersionFieldNumbers_NotBaseStructuralOnes()
     {
-        // In v99, PingReq.seq is wire field 4 (the base structural field is 2)
-        // -> tag (4<<3)|0 = 0x20.
-        var message = new PingReq { Seq = 150 };
+        // In V66, GetPlayerTokenReq.uid is wire field 4 (the base structural field
+        // is 14) -> tag (4<<3)|0 = 0x20.
+        var message = new GetPlayerTokenReq { Uid = 150 };
 
         var bytes = Registry.Serialize(message);
 
@@ -37,67 +37,82 @@ public sealed class RegistrySerializerTests
     [Fact]
     public void Serialize_OmitsProto3DefaultValues()
     {
-        var bytes = Registry.Serialize(new PingReq());
+        var bytes = Registry.Serialize(new GetPlayerTokenReq());
         Assert.Empty(bytes);
     }
 
     [Fact]
     public void RoundTrip_PackedRepeatedUint32()
     {
-        // tags is v99 wire field 6 (base 3) -> length-delimited
+        // scene_tag_id_list is V66 wire field 6 (base 5) -> length-delimited
         // tag (6<<3)|2 = 0x32. proto3 packs repeated numeric scalars by default.
-        var original = new PingReq { Tags = { 1, 2, 3 } };
+        var original = new PlayerEnterSceneNotify { SceneTagIdList = { 1, 2, 3 } };
 
         var bytes = Registry.Serialize(original);
 
         byte[] expected = [0x32, 0x03, 0x01, 0x02, 0x03]; // tag, length 3, three 1-byte varints
         Assert.Equal(expected, bytes);
 
-        var restored = (PingReq)Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
-        Assert.Equal(new uint[] { 1, 2, 3 }, restored.Tags);
+        var restored = (PlayerEnterSceneNotify)Registry.Deserialize(
+            PlayerEnterSceneNotifyCmdId, new CodedInputStream(bytes));
+        Assert.Equal(new uint[] { 1, 2, 3 }, restored.SceneTagIdList);
     }
 
     [Fact]
-    public void RoundTrip_PingReq_PreservesCanonicalFields()
+    public void RoundTrip_GetPlayerTokenReq_PreservesCanonicalFields()
     {
-        var original = new PingReq {
-            ClientId = "client-123",
-            Seq = 42,
-            Tags = { 7, 8, 9 },
-            Flag = true
+        var original = new GetPlayerTokenReq {
+            PsnId = "psn",
+            Ticket = "tkt",
+            OnlineId = "online",
+            AccountUid = "acct",
+            AccountToken = "token",
+            AuthkeyVer = 3,
+            PlatformType = 2,
+            SignType = 1,
+            IsGuest = true,
+            KeyId = 99,
+            Uid = 12345,
         };
 
         var bytes = Registry.Serialize(original);
-        var restored = (PingReq)Registry.Deserialize(PingReqCmdId, new CodedInputStream(bytes));
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(GetPlayerTokenReqCmdId, new CodedInputStream(bytes));
 
-        Assert.Equal(original.ClientId, restored.ClientId);
-        Assert.Equal(original.Seq, restored.Seq);
-        Assert.Equal(original.Tags, restored.Tags);
-        Assert.Equal(original.Flag, restored.Flag);
+        Assert.Equal(original.PsnId, restored.PsnId);
+        Assert.Equal(original.Ticket, restored.Ticket);
+        Assert.Equal(original.OnlineId, restored.OnlineId);
+        Assert.Equal(original.AccountUid, restored.AccountUid);
+        Assert.Equal(original.AccountToken, restored.AccountToken);
+        Assert.Equal(original.AuthkeyVer, restored.AuthkeyVer);
+        Assert.Equal(original.PlatformType, restored.PlatformType);
+        Assert.Equal(original.SignType, restored.SignType);
+        Assert.Equal(original.IsGuest, restored.IsGuest);
+        Assert.Equal(original.KeyId, restored.KeyId);
+        Assert.Equal(original.Uid, restored.Uid);
     }
 
     [Fact]
     public void Deserialize_CapturesUnknownVersionFields()
     {
-        // Field 1824 has no canonical counterpart, so on read it must be captured
-        // (never discarded) while the known field still deserializes. client_id is
-        // v99 wire field 5.
+        // Field 1824 (HADOFGGLMDB) exists in the V66 dump but has no canonical
+        // counterpart, so on read it must be captured (never discarded) while the
+        // known field still deserializes.
         var output = new MemoryStream();
         var cos = new CodedOutputStream(output);
-        cos.WriteTag(fieldNumber: 1824, WireFormat.WireType.LengthDelimited);
+        cos.WriteTag(1824, WireFormat.WireType.LengthDelimited);
         cos.WriteString("obfuscated");
-        cos.WriteTag(fieldNumber: 5, WireFormat.WireType.LengthDelimited); // client_id
-        cos.WriteString("client");
+        cos.WriteTag(9, WireFormat.WireType.LengthDelimited); // psn_id
+        cos.WriteString("psn");
         cos.Flush();
 
-        var restored = (PingReq)Registry.Deserialize(
-            PingReqCmdId, new CodedInputStream(output.ToArray()));
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(
+            GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
-        Assert.Equal("client", restored.ClientId);
+        Assert.Equal("psn", restored.PsnId);
 
         Assert.NotNull(restored.UnknownFields);
         var unknown = Assert.Single(restored.UnknownFields!.Fields);
-        Assert.Equal(expected: 1824, unknown.FieldNumber);
+        Assert.Equal(1824, unknown.FieldNumber);
         Assert.Equal(WireFormat.WireType.LengthDelimited, unknown.WireType);
         Assert.Equal("obfuscated", System.Text.Encoding.UTF8.GetString(unknown.Data));
     }
@@ -107,18 +122,18 @@ public sealed class RegistrySerializerTests
     {
         var output = new MemoryStream();
         var cos = new CodedOutputStream(output);
-        cos.WriteTag(fieldNumber: 1824, WireFormat.WireType.LengthDelimited);
+        cos.WriteTag(1824, WireFormat.WireType.LengthDelimited);
         cos.WriteString("obfuscated");
-        cos.WriteTag(fieldNumber: 5, WireFormat.WireType.LengthDelimited); // client_id
-        cos.WriteString("client");
+        cos.WriteTag(9, WireFormat.WireType.LengthDelimited); // psn_id
+        cos.WriteString("psn");
         cos.Flush();
 
-        var restored = (PingReq)Registry.Deserialize(
-            PingReqCmdId, new CodedInputStream(output.ToArray()));
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(
+            GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
         var json = ProtocolInspector.ToJson(restored);
 
-        Assert.Contains("\"clientId\":\"client\"", json);
+        Assert.Contains("\"psnId\":\"psn\"", json);
         Assert.Contains("\"_unknown\":[", json);
         Assert.Contains("\"field\":1824", json);
         Assert.Contains($"\"data\":\"{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("obfuscated"))}\"", json);
@@ -127,21 +142,21 @@ public sealed class RegistrySerializerTests
     [Fact]
     public void GetCmdId_ResolvesByMessageType()
     {
-        Assert.Equal(expected: 700, Registry.GetCmdId(new PingReq()));
-        Assert.Equal(expected: 4242, Registry.GetCmdId(new Coverage()));
+        Assert.Equal(28757, Registry.GetCmdId(new GetPlayerTokenReq()));
+        Assert.Equal(684, Registry.GetCmdId(new PlayerEnterSceneNotify()));
     }
 
     [Fact]
     public void Create_ConstructsCorrectPocoType()
     {
-        Assert.IsType<PingReq>(Registry.Create(700));
-        Assert.IsType<Coverage>(Registry.Create(4242));
+        Assert.IsType<GetPlayerTokenReq>(Registry.Create(28757));
+        Assert.IsType<PlayerEnterSceneNotify>(Registry.Create(684));
     }
 
     [Fact]
     public void Registry_ExposesVersionAndKnownFirst()
     {
-        Assert.Equal("V99", Registry.Version);
-        Assert.Contains(expected: 700, Registry.KnownFirst);
+        Assert.Equal("V66", Registry.Version);
+        Assert.Contains(28757, Registry.KnownFirst);
     }
 }

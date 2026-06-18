@@ -9,33 +9,13 @@ namespace Starlight.Protobuf.Core;
 /// <summary>Proto3 scalar/aggregate kind for a field, off the hot path.</summary>
 public enum ProtoKind
 {
-    Double,
-    Float,
-    Int32,
-    Int64,
-    UInt32,
-    UInt64,
-    SInt32,
-    SInt64,
-    Fixed32,
-    Fixed64,
-    SFixed32,
-    SFixed64,
-    Bool,
-    String,
-    Bytes,
-    Enum,
-    Message
+    Double, Float, Int32, Int64, UInt32, UInt64,
+    SInt32, SInt64, Fixed32, Fixed64, SFixed32, SFixed64,
+    Bool, String, Bytes, Enum, Message,
 }
 
 /// <summary>How a field repeats / carries presence.</summary>
-public enum FieldRule
-{
-    Single,
-    Optional,
-    Repeated,
-    Map
-}
+public enum FieldRule { Single, Optional, Repeated, Map }
 
 /// <summary>
 /// Descriptor-driven access to a message's fields. Implemented by
@@ -70,17 +50,12 @@ public interface IDynamicMessage : IMessage, IDynamicAccessor
 public sealed class FieldDescriptor
 {
     public FieldDescriptor(
-        string name,
-        string propertyName,
-        int baseNumber,
-        int wireNumber,
-        ProtoKind kind,
-        FieldRule rule,
+        string name, string propertyName, int baseNumber, int wireNumber,
+        ProtoKind kind, FieldRule rule,
         string? oneofName = null,
         ProtoKind keyKind = ProtoKind.Int32,
         Func<MessageDescriptor>? messageRef = null,
-        FieldTransform? transform = null
-    )
+        FieldTransform? transform = null)
     {
         Name = name;
         PropertyName = propertyName;
@@ -175,7 +150,6 @@ public sealed class MessageDescriptor
             foreach (var f in fields)
             {
                 f.Property = clrType.GetProperty(f.PropertyName);
-
                 if (f.OneofName is not null)
                     f.CaseProperty = clrType.GetProperty(f.OneofName + "Case");
             }
@@ -221,7 +195,6 @@ public sealed class MessageDescriptor
         {
             var f = Find(fieldOrProperty);
             if (f is null) return false;
-
             f.Number = wireNumber;
             _index = BuildIndex(hasRemaps: true);
             return true;
@@ -234,9 +207,7 @@ public sealed class MessageDescriptor
         lock (_remapLock)
         {
             foreach (var f in Fields)
-            {
                 f.Number = f.DefaultNumber;
-            }
             _index = BuildIndex(hasRemaps: false);
         }
     }
@@ -245,11 +216,8 @@ public sealed class MessageDescriptor
     private Index BuildIndex(bool hasRemaps)
     {
         var byNumber = new Dictionary<int, FieldDescriptor>(Fields.Count);
-
         foreach (var f in Fields)
-        {
             byNumber[f.Number] = f;
-        }
         return new Index(hasRemaps, byNumber.ToFrozenDictionary());
     }
 
@@ -259,7 +227,6 @@ public sealed class MessageDescriptor
     {
         if (ClrType is null)
             return Normalize(f.Kind, ((IDynamicAccessor)msg).Get(f.Name));
-
         var raw = f.Property!.GetValue(msg);
         return Normalize(f.Kind, raw);
     }
@@ -282,7 +249,6 @@ public sealed class MessageDescriptor
     {
         if (ClrType is null)
             return ((IDynamicAccessor)msg).ActiveOneof(f.OneofName!) == f.BaseNumber;
-
         var c = f.CaseProperty!.GetValue(msg);
         return c is not null && Convert.ToInt32(c) == f.BaseNumber;
     }
@@ -291,7 +257,6 @@ public sealed class MessageDescriptor
     {
         if (ClrType is null)
             return Normalize(f.Kind, ((IDynamicAccessor)msg).GetOneof(f.OneofName!));
-
         return Normalize(f.Kind, f.Property!.GetValue(msg));
     }
 
@@ -308,11 +273,7 @@ public sealed class MessageDescriptor
     /// <summary>Adds an element to a repeated field, coercing to the list element type.</summary>
     internal void AddElement(IList list, FieldDescriptor f, object? value)
     {
-        if (ClrType is null)
-        {
-            list.Add(value);
-            return;
-        }
+        if (ClrType is null) { list.Add(value); return; }
         var elemType = list.GetType().GetGenericArguments()[0];
         list.Add(Coerce(elemType, value));
     }
@@ -320,11 +281,7 @@ public sealed class MessageDescriptor
     /// <summary>Puts a key/value pair into a map field, coercing to its CLR types.</summary>
     internal void PutEntry(IDictionary map, object? key, object? value)
     {
-        if (ClrType is null)
-        {
-            map[key!] = value;
-            return;
-        }
+        if (ClrType is null) { map[key!] = value; return; }
         var args = map.GetType().GetGenericArguments();
         map[Coerce(args[0], key)!] = Coerce(args[1], value);
     }
@@ -332,14 +289,12 @@ public sealed class MessageDescriptor
     private static object? Normalize(ProtoKind kind, object? raw)
     {
         if (raw is null) return null;
-
         return kind == ProtoKind.Enum ? Convert.ToInt32(raw) : raw;
     }
 
     private static object? Coerce(Type target, object? value)
     {
         if (value is null) return null;
-
         var underlying = Nullable.GetUnderlyingType(target) ?? target;
         return underlying.IsEnum ? Enum.ToObject(underlying, Convert.ToInt64(value)) : value;
     }

@@ -52,106 +52,12 @@ internal static partial class CodeEmitter
             _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var t) ? t : null;
     }
 
-    // ---- alternate field names (alts) ---------------------------------------
-
-    /// <summary>
-    /// Per-message alternate-name lookup, keyed by message name then base field name. The
-    /// canonical (base) proto declares <c>[alts = "..."]</c> on a field to list the version
-    /// field names that should correlate to it, so a version may rename a field without
-    /// breaking the base&lt;-&gt;version match. Authored on base protos only.
-    /// </summary>
-    internal sealed class AltsTable
-    {
-        private readonly Dictionary<string, Dictionary<string, List<string>>> _map;
-
-        public AltsTable(Dictionary<string, Dictionary<string, List<string>>> map)
-        {
-            _map = map;
-        }
-
-        public IReadOnlyList<string> Get(string message, string field) =>
-            _map.TryGetValue(message, out var fields) && fields.TryGetValue(field, out var a) ? a : System.Array.Empty<string>();
-    }
-
-    /// <summary>Reads the repeated <c>alts</c> field option off every message in the set into an <see cref="AltsTable"/>.</summary>
-    public static AltsTable ReadAlts(FileDescriptorSet set)
-    {
-        var map = new Dictionary<string, Dictionary<string, List<string>>>();
-
-        foreach (var file in set.Files)
-            foreach (var msg in file.MessageTypes)
-            {
-                ReadMessageAlts(msg, map);
-            }
-        return new AltsTable(map);
-    }
-
-    private static void ReadMessageAlts(DescriptorProto msg, Dictionary<string, Dictionary<string, List<string>>> map)
-    {
-        foreach (var field in msg.Fields)
-        {
-            var alts = ReadFieldAlts(field.Options);
-            if (alts.Count == 0) continue;
-
-            if (!map.TryGetValue(msg.Name, out var fields))
-                map[msg.Name] = fields = new Dictionary<string, List<string>>();
-            fields[field.Name] = alts;
-        }
-
-        foreach (var nested in msg.NestedTypes)
-        {
-            ReadMessageAlts(nested, map);
-        }
-    }
-
-    private static List<string> ReadFieldAlts(FieldOptions? options)
-    {
-        var alts = new List<string>();
-        if (options is null) return alts;
-
-        // `alts` is a repeated extension protobuf-net can't resolve, so each value is parked
-        // as a single-part uninterpreted option carrying the (unquoted) string literal.
-        foreach (var opt in options.UninterpretedOptions)
-        {
-            if (opt.Names.Count != 1 || opt.Names[0].name_part != "alts") continue;
-
-            var value = opt.AggregateValue ?? "";
-            if (value.Length != 0) alts.Add(value);
-        }
-
-        return alts;
-    }
-
-    /// <summary>
-    /// The version field correlated to a base field: matched by prefix-stripped name, or --
-    /// failing that -- by any name the base field lists in its <c>alts</c> option (also
-    /// stripped). The '_' custom-name marker is stripped on both sides, mirroring
-    /// <see cref="FieldsByName"/>. Returns null when the version has no matching field (the
-    /// field is then not serialized for that version).
-    /// </summary>
-    internal static FieldDescriptorProto? MatchVersionField(
-        FieldDescriptorProto baseField,
-        string baseMsgName,
-        Dictionary<string, FieldDescriptorProto> versionByName,
-        AltsTable? alts
-    )
-    {
-        if (versionByName.TryGetValue(StripPrefix(baseField.Name), out var direct)) return direct;
-
-        if (alts is not null)
-            foreach (var alt in alts.Get(baseMsgName, baseField.Name))
-            {
-                if (versionByName.TryGetValue(StripPrefix(alt), out var matched)) return matched;
-            }
-        return null;
-    }
-
     /// <summary>Integer kinds the transforms apply to. Floats, bools, strings, enums and messages are excluded.</summary>
     internal static bool IsTransformable(FType type) => type switch {
         FType.TypeInt32 or FType.TypeInt64 or FType.TypeUint32 or FType.TypeUint64
             or FType.TypeSint32 or FType.TypeSint64 or FType.TypeFixed32 or FType.TypeFixed64
             or FType.TypeSfixed32 or FType.TypeSfixed64 => true,
-        _ => false
+        _ => false,
     };
 
     // ---- codegen ------------------------------------------------------------
@@ -162,7 +68,6 @@ internal static partial class CodeEmitter
         if (t is null) return valueExpr;
 
         var inner = $"(long){valueExpr}";
-
         for (var i = 0; i < t.Ops.Length; i++)
             inner = $"({inner} {t.Ops[i]} {Lit(t.Operands[i])})";
         return $"unchecked(({csType})({inner}))";
@@ -174,7 +79,6 @@ internal static partial class CodeEmitter
         if (t is null) return readExpr;
 
         var inner = $"(long){readExpr}";
-
         for (var i = t.Ops.Length - 1; i >= 0; i--)
             inner = $"({inner} {Inverse(t.Ops[i])} {Lit(t.Operands[i])})";
         return $"unchecked(({csType})({inner}))";
@@ -205,9 +109,7 @@ internal static partial class CodeEmitter
 
         foreach (var file in set.Files)
             foreach (var msg in file.MessageTypes)
-            {
                 ReadMessageTransforms(msg, map, violations);
-            }
 
         return new TransformTable(map, violations);
     }
@@ -215,8 +117,7 @@ internal static partial class CodeEmitter
     private static void ReadMessageTransforms(
         DescriptorProto msg,
         Dictionary<string, Dictionary<string, Transform>> map,
-        List<MaskViolation> violations
-    )
+        List<MaskViolation> violations)
     {
         foreach (var field in msg.Fields)
         {
@@ -229,9 +130,7 @@ internal static partial class CodeEmitter
         }
 
         foreach (var nested in msg.NestedTypes)
-        {
             ReadMessageTransforms(nested, map, violations);
-        }
     }
 
     private static Transform? BuildTransform(FieldOptions? options, string message, string field, List<MaskViolation> violations)
@@ -247,7 +146,6 @@ internal static partial class CodeEmitter
             if (opt.Names.Count != 1) continue;
 
             var value = opt.AggregateValue ?? "";
-
             switch (opt.Names[0].name_part)
             {
                 case "add": add = ParseOperand(value); break;
@@ -274,14 +172,13 @@ internal static partial class CodeEmitter
         if (add.HasValue && xor.HasValue)
         {
             // fop = "first operation": which of add/xor is applied first on encode.
-            return fop == "xor" ?
-                new Transform { Ops = "^+", Operands = new[] { xor.Value, add.Value } } :
-                new Transform { Ops = "+^", Operands = new[] { add.Value, xor.Value } };
+            return fop == "xor"
+                ? new Transform { Ops = "^+", Operands = new[] { xor.Value, add.Value } }
+                : new Transform { Ops = "+^", Operands = new[] { add.Value, xor.Value } };
         }
 
         if (add.HasValue) return new Transform { Ops = "+", Operands = new[] { add.Value } };
         if (xor.HasValue) return new Transform { Ops = "^", Operands = new[] { xor.Value } };
-
         return null;
     }
 
@@ -304,21 +201,17 @@ internal static partial class CodeEmitter
 
             // Find the last top-level binary operator (the outermost / last-applied op).
             var depth = 0;
-
             for (var i = expr.Length - 1; i > 0; i--)
             {
                 var c = expr[i];
-
                 if (c == ')') depth++;
                 else if (c == '(') depth--;
                 else if (depth == 0 && (c == '+' || c == '-' || c == '^'))
                 {
                     var right = expr.Substring(i + 1).Trim();
-
                     if (!long.TryParse(right, NumberStyles.Integer, CultureInfo.InvariantCulture, out var operand))
                         return false;
-                    if (!Walk(expr.Substring(startIndex: 0, i))) return false;
-
+                    if (!Walk(expr.Substring(0, i))) return false;
                     ops.Append(c);
                     operands.Add(operand);
                     return true;
@@ -346,7 +239,6 @@ internal static partial class CodeEmitter
     private static bool IsSafeMaskGrammar(string mask)
     {
         if (!TryTokenizeMask(mask, out var tokens)) return false;
-
         var pos = 0;
         return ParseMaskExpr(tokens, ref pos) && pos == tokens.Count;
     }
@@ -355,16 +247,10 @@ internal static partial class CodeEmitter
     {
         tokens = new List<string>();
         var i = 0;
-
         while (i < s.Length)
         {
             var c = s[i];
-
-            if (char.IsWhiteSpace(c))
-            {
-                i++;
-                continue;
-            }
+            if (char.IsWhiteSpace(c)) { i++; continue; }
 
             if (c is '(' or ')' or '+' or '-' or '^')
             {
@@ -382,7 +268,6 @@ internal static partial class CodeEmitter
                 // The only legal identifier is the whole word `value`; `value1`, `valuevalue`,
                 // `System`, etc. are read as one run and rejected here.
                 if (s.Substring(start, i - start) != "value") return false;
-
                 tokens.Add("value");
             } else
             {
@@ -396,7 +281,6 @@ internal static partial class CodeEmitter
     private static bool ParseMaskExpr(List<string> t, ref int p)
     {
         if (!ParseMaskUnary(t, ref p)) return false;
-
         while (p < t.Count && (t[p] == "+" || t[p] == "-" || t[p] == "^"))
         {
             p++;
@@ -417,7 +301,6 @@ internal static partial class CodeEmitter
         if (p >= t.Count) return false;
 
         var tok = t[p];
-
         if (tok == "value" || char.IsDigit(tok[0]))
         {
             p++;
@@ -429,7 +312,6 @@ internal static partial class CodeEmitter
             p++;
             if (!ParseMaskExpr(t, ref p)) return false;
             if (p >= t.Count || t[p] != ")") return false;
-
             p++;
             return true;
         }
@@ -444,22 +326,15 @@ internal static partial class CodeEmitter
             // Only strip when the leading '(' matches the trailing ')'.
             var depth = 0;
             var wraps = true;
-
             for (var i = 0; i < expr.Length; i++)
             {
                 if (expr[i] == '(') depth++;
                 else if (expr[i] == ')') depth--;
-
-                if (depth == 0 && i < expr.Length - 1)
-                {
-                    wraps = false;
-                    break;
-                }
+                if (depth == 0 && i < expr.Length - 1) { wraps = false; break; }
             }
 
             if (!wraps) break;
-
-            expr = expr.Substring(startIndex: 1, expr.Length - 2).Trim();
+            expr = expr.Substring(1, expr.Length - 2).Trim();
         }
 
         return expr;
