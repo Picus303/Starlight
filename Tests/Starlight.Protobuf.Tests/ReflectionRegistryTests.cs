@@ -138,7 +138,7 @@ public sealed class ReflectionRegistryTests
     public void Probe_RoundTrips_AcrossEveryKind()
     {
         var registry = Load();
-        var original = (DynamicMessage) registry.Create(4001); // Probe via CmdId
+        var original = (DynamicMessage)registry.Create(4001); // Probe via CmdId
         original.Set("a", 42);
         original.Set("b", "hello");
         original.Set("c", -7);
@@ -157,11 +157,11 @@ public sealed class ReflectionRegistryTests
         original.GetList("g").Add(g1);
         original.GetList("g").Add(g2);
 
-        original.Set("color", (int) 2); // BLUE
+        original.Set("color", (int)2); // BLUE
         original.SetOneof("Choice", 9, 4567); // oneof field h (base number 9)
 
         var bytes = registry.Serialize(original);
-        var restored = (DynamicMessage) registry.Create(4001);
+        var restored = (DynamicMessage)registry.Create(4001);
         registry.Deserialize(restored, new CodedInputStream(bytes));
 
         Assert.Equal(42, restored.Get("a"));
@@ -170,7 +170,7 @@ public sealed class ReflectionRegistryTests
         Assert.Equal(new object?[] { 1, 2, 300 }, restored.GetList("d").Cast<object?>());
         Assert.Equal("ten", restored.GetMap("e")[10]);
         Assert.Equal("twenty", restored.GetMap("e")[20]);
-        Assert.Equal(99, ((DynamicMessage) restored.Get("f")!).Get("n"));
+        Assert.Equal(99, ((DynamicMessage)restored.Get("f")!).Get("n"));
         var gs = restored.GetList("g").Cast<DynamicMessage>().Select(m => m.Get("n")).ToArray();
         Assert.Equal(new object?[] { 1, 2 }, gs);
         Assert.Equal(2, restored.Get("color"));
@@ -192,7 +192,7 @@ public sealed class ReflectionRegistryTests
         registry.Deserialize(restored, new CodedInputStream(bytes));
 
         Assert.Equal(10, restored.ActiveOneof("Choice"));
-        Assert.Equal(77, ((DynamicMessage) restored.GetOneof("Choice")!).Get("n"));
+        Assert.Equal(77, ((DynamicMessage)restored.GetOneof("Choice")!).Get("n"));
     }
 
     [Fact]

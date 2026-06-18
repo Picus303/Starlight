@@ -130,13 +130,11 @@ internal static partial class CodeEmitter
         if (oneofName != null)
         {
             guard = $"m.{oneofName}Case == global::{baseNs}.{msgName}.{oneofName}OneofCase.{Pascal(field.Name)}";
-        }
-        else if (IsProto3Optional(field))
+        } else if (IsProto3Optional(field))
         {
             guard = $"{acc} != null";
             valueAcc = field.type is FType.TypeString or FType.TypeBytes ? $"{acc}!" : $"{acc}.Value";
-        }
-        else
+        } else
         {
             guard = Omit(w, field.type, acc);
         }
@@ -256,8 +254,7 @@ internal static partial class CodeEmitter
         {
             var msgType = Simple(valField.TypeName);
             valSizeExpr = $"global::Google.Protobuf.CodedOutputStream.ComputeLengthSize({msgType}Serializer.Instance.CalculateSize(kv.Value)) + {msgType}Serializer.Instance.CalculateSize(kv.Value)";
-        }
-        else
+        } else
         {
             valSizeExpr = SizeCall(vw!, "kv.Value");
         }
@@ -283,8 +280,7 @@ internal static partial class CodeEmitter
             write.AppendLine($"            {RawTag(2, 2)};");
             write.AppendLine($"            output.WriteLength({msgType}Serializer.Instance.CalculateSize(kv.Value));");
             write.AppendLine($"            {msgType}Serializer.Instance.Serialize(kv.Value, output);");
-        }
-        else
+        } else
         {
             write.AppendLine($"            {RawTag(2, valWire)};");
             write.AppendLine($"            {WriteCall(vw!, "kv.Value")};");
@@ -321,8 +317,7 @@ internal static partial class CodeEmitter
             var msgType = Simple(valField.TypeName);
             read.AppendLine($"                                v = new global::{baseNs}.{msgType}();");
             read.AppendLine($"                                {msgType}Serializer.Instance.Deserialize(v, ci.ReadBytes().CreateCodedInput());");
-        }
-        else
+        } else
         {
             read.AppendLine($"                                v = {ReadCall(vw!, "ci")};");
         }

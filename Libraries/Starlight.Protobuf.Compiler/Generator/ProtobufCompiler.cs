@@ -74,8 +74,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
         var protos = context.AdditionalTextsProvider
             .Where(f => f.Path.EndsWith(".proto"))
             .Combine(context.AnalyzerConfigOptionsProvider)
-            .Select((pair, ct) =>
-            {
+            .Select((pair, ct) => {
                 var (file, provider) = pair;
                 provider.GetOptions(file).TryGetValue("build_metadata.AdditionalFiles.SLProtoRole", out var role);
                 return new Proto(
@@ -172,7 +171,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                         EmitTopLevelEnum(body, e);
                     foreach (var msg in file.MessageTypes)
                     {
-                        CodeEmitter.EmitPoco(body, msg, baseNs, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, baseResolver);
+                        CodeEmitter.EmitPoco(body, msg, baseNs, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?)null, baseResolver);
                         body.AppendLine();
                     }
 
@@ -190,8 +189,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
             {
                 var projectDir = Path.GetDirectoryName(versionFiles[0].FullPath) ?? versionFiles[0].FullPath;
                 ctx.ReportDiagnostic(Diagnostic.Create(MissingMetaError, Location.None, projectDir));
-            }
-            else
+            } else
             {
                 var version = Capitalize(meta.Package);
                 var versionNs = $"{baseNs}.{version}";
@@ -241,7 +239,7 @@ public sealed partial class ProtobufCompiler : IIncrementalGenerator
                     EmitTopLevelEnum(body, e);
                 foreach (var msg in f.MessageTypes)
                 {
-                    CodeEmitter.EmitPoco(body, msg, ns, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?) null, resolver, selfSerializable: true);
+                    CodeEmitter.EmitPoco(body, msg, ns, cmdIds.TryGetValue(msg.Name, out var id) ? id : (int?)null, resolver, selfSerializable: true);
                     body.AppendLine();
                     ValidateTransforms(ctx, msg, msg, transforms, resolver);
                     CodeEmitter.EmitSerializer(body, msg, msg, ns, resolver, transforms);

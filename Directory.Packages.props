@@ -5,14 +5,23 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
         <PackageVersion Include="Google.Protobuf" Version="3.35.1" />
-        <PackageVersion Include="Grpc.Tools" Version="2.51.0" />
+        <PackageVersion Include="Grpc.Tools" Version="2.68.1" />
         <PackageVersion Include="JetBrains.Annotations" Version="2025.2.4" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.0" />
         <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.8" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115" />
+        <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
         <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0-preview.5.26302.115" />
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+        <PackageVersion Include="protobuf-net" Version="3.2.56" />
+        <PackageVersion Include="protobuf-net.Core" Version="3.3.0-g6785ecbb35" />
+        <PackageVersion Include="protobuf-net.Reflection" Version="3.2.52" />
         <PackageVersion Include="Serilog" Version="4.4.0-dev-02437" />
         <PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
         <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />

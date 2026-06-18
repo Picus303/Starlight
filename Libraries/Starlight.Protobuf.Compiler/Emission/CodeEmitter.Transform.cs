@@ -53,8 +53,7 @@ internal static partial class CodeEmitter
     }
 
     /// <summary>Integer kinds the transforms apply to. Floats, bools, strings, enums and messages are excluded.</summary>
-    internal static bool IsTransformable(FType type) => type switch
-    {
+    internal static bool IsTransformable(FType type) => type switch {
         FType.TypeInt32 or FType.TypeInt64 or FType.TypeUint32 or FType.TypeUint64
             or FType.TypeSint32 or FType.TypeSint64 or FType.TypeFixed32 or FType.TypeFixed64
             or FType.TypeSfixed32 or FType.TypeSfixed64 => true,
@@ -90,7 +89,7 @@ internal static partial class CodeEmitter
     private static string Lit(long v) => $"({v.ToString(CultureInfo.InvariantCulture)}L)";
 
     private static long? ParseOperand(string value) =>
-        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?) null;
+        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : (long?)null;
 
     // ---- extraction ---------------------------------------------------------
 
@@ -257,14 +256,12 @@ internal static partial class CodeEmitter
             {
                 tokens.Add(c.ToString());
                 i++;
-            }
-            else if (char.IsDigit(c))
+            } else if (char.IsDigit(c))
             {
                 var start = i;
                 while (i < s.Length && char.IsDigit(s[i])) i++;
                 tokens.Add(s.Substring(start, i - start));
-            }
-            else if (char.IsLetter(c) || c == '_')
+            } else if (char.IsLetter(c) || c == '_')
             {
                 var start = i;
                 while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) i++;
@@ -272,8 +269,7 @@ internal static partial class CodeEmitter
                 // `System`, etc. are read as one run and rejected here.
                 if (s.Substring(start, i - start) != "value") return false;
                 tokens.Add("value");
-            }
-            else
+            } else
             {
                 return false;
             }

@@ -47,11 +47,11 @@ internal static partial class CodeEmitter
 
     private static byte[] TagBytes(int number, int wireType)
     {
-        var tag = ((uint) number << 3) | (uint) wireType;
+        var tag = ((uint)number << 3) | (uint)wireType;
         var bytes = new List<byte>();
         do
         {
-            var b = (byte) (tag & 0x7F);
+            var b = (byte)(tag & 0x7F);
             tag >>= 7;
             if (tag != 0) b |= 0x80;
             bytes.Add(b);
@@ -60,7 +60,7 @@ internal static partial class CodeEmitter
         return bytes.ToArray();
     }
 
-    private static uint TagValue(int number, int wireType) => ((uint) number << 3) | (uint) wireType;
+    private static uint TagValue(int number, int wireType) => ((uint)number << 3) | (uint)wireType;
 
     private static string RawTag(int number, int wireType) =>
         $"output.WriteRawTag({string.Join(", ", TagBytes(number, wireType).Select(b => "0x" + b.ToString("X2")))})";
@@ -108,8 +108,7 @@ internal static partial class CodeEmitter
         return Scalar(field.type, "").CsType;
     }
 
-    private static string Kind(FType type) => type switch
-    {
+    private static string Kind(FType type) => type switch {
         FType.TypeDouble => "Double",
         FType.TypeFloat => "Float",
         FType.TypeInt64 => "Int64",

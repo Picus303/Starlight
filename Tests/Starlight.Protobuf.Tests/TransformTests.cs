@@ -21,11 +21,11 @@ public sealed class TransformTests
     private static Transformed Sample() => new() { A = 7, B = 1000, C = 42, D = 5, E = 1000 };
 
     // Independent reimplementation of the four proto declarations.
-    private static uint EncA(uint v) => unchecked((uint) (((long) v + 100) ^ 12345)); // fop=add
-    private static ulong EncB(ulong v) => unchecked((ulong) (((long) v ^ 999) + 4242)); // fop=xor
-    private static int EncC(int v) => unchecked((int) (((long) v - 7) ^ 555)); // mask
-    private static uint EncD(uint v) => unchecked((uint) ((long) v + 50000)); // add only
-    private static int EncE(int v) => unchecked((int) (((long) v + -123) ^ 9000)); // negative add
+    private static uint EncA(uint v) => unchecked((uint)(((long)v + 100) ^ 12345)); // fop=add
+    private static ulong EncB(ulong v) => unchecked((ulong)(((long)v ^ 999) + 4242)); // fop=xor
+    private static int EncC(int v) => unchecked((int)(((long)v - 7) ^ 555)); // mask
+    private static uint EncD(uint v) => unchecked((uint)((long)v + 50000)); // add only
+    private static int EncE(int v) => unchecked((int)(((long)v + -123) ^ 9000)); // negative add
 
     [Fact]
     public void FastPath_WritesObfuscatedWireValues()

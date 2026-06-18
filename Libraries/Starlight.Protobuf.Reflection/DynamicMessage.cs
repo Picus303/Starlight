@@ -55,8 +55,7 @@ public sealed class DynamicMessage : IDynamicMessage
     public void SetOneof(string oneofName, int caseNumber, object? value) =>
         _oneofs[oneofName] = (caseNumber, value);
 
-    private static object ScalarDefault(ProtoKind kind) => kind switch
-    {
+    private static object ScalarDefault(ProtoKind kind) => kind switch {
         ProtoKind.String => "",
         ProtoKind.Bytes => ByteString.Empty,
         ProtoKind.Bool => false,

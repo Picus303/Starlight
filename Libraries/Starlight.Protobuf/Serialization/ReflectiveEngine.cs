@@ -198,8 +198,7 @@ public static class ReflectiveEngine
                 output.WriteTag(2, WireType.LengthDelimited);
                 output.WriteLength(CalculateSize(nested, e.Value!));
                 Serialize(nested, e.Value!, output);
-            }
-            else
+            } else
             {
                 output.WriteTag(2, WireTypeOf(f.Kind));
                 WriteValue(output, f.Kind, Norm(f.Kind, e.Value!));
@@ -219,7 +218,7 @@ public static class ReflectiveEngine
             var f = desc.FindByNumber(number);
             if (f is null)
             {
-                var m = (IMessage) msg;
+                var m = (IMessage)msg;
                 (m.UnknownFields ??= new UnknownFieldSet()).Add(UnknownFieldSet.ReadFrom(tag, input));
                 continue;
             }
@@ -237,34 +236,33 @@ public static class ReflectiveEngine
                 return;
 
             case FieldRule.Repeated when f.Kind == ProtoKind.Message:
-            {
-                var nested = f.MessageRef!();
-                var sub = nested.Factory!();
-                Deserialize(nested, sub, input.ReadBytes().CreateCodedInput());
-                desc.GetList(msg, f).Add(sub);
-                return;
-            }
+                {
+                    var nested = f.MessageRef!();
+                    var sub = nested.Factory!();
+                    Deserialize(nested, sub, input.ReadBytes().CreateCodedInput());
+                    desc.GetList(msg, f).Add(sub);
+                    return;
+                }
 
             case FieldRule.Repeated when f.Kind is ProtoKind.String or ProtoKind.Bytes:
                 desc.AddElement(desc.GetList(msg, f), f, ReadValue(input, f.Kind));
                 return;
 
             case FieldRule.Repeated:
-            {
-                var list = desc.GetList(msg, f);
-                if (wire == WireType.LengthDelimited)
                 {
-                    var ci = input.ReadBytes().CreateCodedInput();
-                    while (!ci.IsAtEnd)
-                        desc.AddElement(list, f, ReadValue(ci, f.Kind));
-                }
-                else
-                {
-                    desc.AddElement(list, f, ReadValue(input, f.Kind));
-                }
+                    var list = desc.GetList(msg, f);
+                    if (wire == WireType.LengthDelimited)
+                    {
+                        var ci = input.ReadBytes().CreateCodedInput();
+                        while (!ci.IsAtEnd)
+                            desc.AddElement(list, f, ReadValue(ci, f.Kind));
+                    } else
+                    {
+                        desc.AddElement(list, f, ReadValue(input, f.Kind));
+                    }
 
-                return;
-            }
+                    return;
+                }
 
             default:
                 if (f.Kind == ProtoKind.Message)
@@ -274,8 +272,7 @@ public static class ReflectiveEngine
                     Deserialize(nested, sub, input.ReadBytes().CreateCodedInput());
                     if (f.InOneof) desc.SetOneof(msg, f, sub);
                     else desc.SetValue(msg, f, sub);
-                }
-                else
+                } else
                 {
                     var value = DecodeWire(f, ReadValue(input, f.Kind));
                     if (f.InOneof) desc.SetOneof(msg, f, value);
@@ -306,8 +303,7 @@ public static class ReflectiveEngine
                         var nested = f.MessageRef!();
                         value = nested.Factory!();
                         Deserialize(nested, value, ci.ReadBytes().CreateCodedInput());
-                    }
-                    else
+                    } else
                     {
                         value = ReadValue(ci, f.Kind);
                     }
@@ -347,47 +343,44 @@ public static class ReflectiveEngine
         return !IsDefault(f.Kind, value!);                          // implicit proto3 omission
     }
 
-    private static bool IsDefault(ProtoKind kind, object value) => kind switch
-    {
-        ProtoKind.String => ((string) value).Length == 0,
-        ProtoKind.Bytes => ((ByteString) value).Length == 0,
-        ProtoKind.Bool => !(bool) value,
-        ProtoKind.Float => (float) value == 0f,
-        ProtoKind.Double => (double) value == 0d,
-        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => (long) value == 0L,
-        ProtoKind.UInt32 or ProtoKind.Fixed32 => (uint) value == 0u,
-        ProtoKind.UInt64 or ProtoKind.Fixed64 => (ulong) value == 0UL,
+    private static bool IsDefault(ProtoKind kind, object value) => kind switch {
+        ProtoKind.String => ((string)value).Length == 0,
+        ProtoKind.Bytes => ((ByteString)value).Length == 0,
+        ProtoKind.Bool => !(bool)value,
+        ProtoKind.Float => (float)value == 0f,
+        ProtoKind.Double => (double)value == 0d,
+        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => (long)value == 0L,
+        ProtoKind.UInt32 or ProtoKind.Fixed32 => (uint)value == 0u,
+        ProtoKind.UInt64 or ProtoKind.Fixed64 => (ulong)value == 0UL,
         _ => Convert.ToInt64(value) == 0L, // int32/sint32/sfixed32/enum
     };
 
     // ---- wire primitives ----------------------------------------------------
 
-    private static WireType WireTypeOf(ProtoKind kind) => kind switch
-    {
+    private static WireType WireTypeOf(ProtoKind kind) => kind switch {
         ProtoKind.Double or ProtoKind.Fixed64 or ProtoKind.SFixed64 => WireType.Fixed64,
         ProtoKind.Float or ProtoKind.Fixed32 or ProtoKind.SFixed32 => WireType.Fixed32,
         ProtoKind.String or ProtoKind.Bytes or ProtoKind.Message => WireType.LengthDelimited,
         _ => WireType.Varint,
     };
 
-    private static int ValueSize(ProtoKind kind, object v) => kind switch
-    {
-        ProtoKind.Double => CodedOutputStream.ComputeDoubleSize((double) v),
-        ProtoKind.Float => CodedOutputStream.ComputeFloatSize((float) v),
-        ProtoKind.Int32 => CodedOutputStream.ComputeInt32Size((int) v),
-        ProtoKind.Int64 => CodedOutputStream.ComputeInt64Size((long) v),
-        ProtoKind.UInt32 => CodedOutputStream.ComputeUInt32Size((uint) v),
-        ProtoKind.UInt64 => CodedOutputStream.ComputeUInt64Size((ulong) v),
-        ProtoKind.SInt32 => CodedOutputStream.ComputeSInt32Size((int) v),
-        ProtoKind.SInt64 => CodedOutputStream.ComputeSInt64Size((long) v),
-        ProtoKind.Fixed32 => CodedOutputStream.ComputeFixed32Size((uint) v),
-        ProtoKind.Fixed64 => CodedOutputStream.ComputeFixed64Size((ulong) v),
-        ProtoKind.SFixed32 => CodedOutputStream.ComputeSFixed32Size((int) v),
-        ProtoKind.SFixed64 => CodedOutputStream.ComputeSFixed64Size((long) v),
-        ProtoKind.Bool => CodedOutputStream.ComputeBoolSize((bool) v),
-        ProtoKind.String => CodedOutputStream.ComputeStringSize((string) v),
-        ProtoKind.Bytes => CodedOutputStream.ComputeBytesSize((ByteString) v),
-        ProtoKind.Enum => CodedOutputStream.ComputeEnumSize((int) v),
+    private static int ValueSize(ProtoKind kind, object v) => kind switch {
+        ProtoKind.Double => CodedOutputStream.ComputeDoubleSize((double)v),
+        ProtoKind.Float => CodedOutputStream.ComputeFloatSize((float)v),
+        ProtoKind.Int32 => CodedOutputStream.ComputeInt32Size((int)v),
+        ProtoKind.Int64 => CodedOutputStream.ComputeInt64Size((long)v),
+        ProtoKind.UInt32 => CodedOutputStream.ComputeUInt32Size((uint)v),
+        ProtoKind.UInt64 => CodedOutputStream.ComputeUInt64Size((ulong)v),
+        ProtoKind.SInt32 => CodedOutputStream.ComputeSInt32Size((int)v),
+        ProtoKind.SInt64 => CodedOutputStream.ComputeSInt64Size((long)v),
+        ProtoKind.Fixed32 => CodedOutputStream.ComputeFixed32Size((uint)v),
+        ProtoKind.Fixed64 => CodedOutputStream.ComputeFixed64Size((ulong)v),
+        ProtoKind.SFixed32 => CodedOutputStream.ComputeSFixed32Size((int)v),
+        ProtoKind.SFixed64 => CodedOutputStream.ComputeSFixed64Size((long)v),
+        ProtoKind.Bool => CodedOutputStream.ComputeBoolSize((bool)v),
+        ProtoKind.String => CodedOutputStream.ComputeStringSize((string)v),
+        ProtoKind.Bytes => CodedOutputStream.ComputeBytesSize((ByteString)v),
+        ProtoKind.Enum => CodedOutputStream.ComputeEnumSize((int)v),
         _ => throw new InvalidOperationException($"Not a scalar kind: {kind}"),
     };
 
@@ -395,28 +388,27 @@ public static class ReflectiveEngine
     {
         switch (kind)
         {
-            case ProtoKind.Double: o.WriteDouble((double) v); break;
-            case ProtoKind.Float: o.WriteFloat((float) v); break;
-            case ProtoKind.Int32: o.WriteInt32((int) v); break;
-            case ProtoKind.Int64: o.WriteInt64((long) v); break;
-            case ProtoKind.UInt32: o.WriteUInt32((uint) v); break;
-            case ProtoKind.UInt64: o.WriteUInt64((ulong) v); break;
-            case ProtoKind.SInt32: o.WriteSInt32((int) v); break;
-            case ProtoKind.SInt64: o.WriteSInt64((long) v); break;
-            case ProtoKind.Fixed32: o.WriteFixed32((uint) v); break;
-            case ProtoKind.Fixed64: o.WriteFixed64((ulong) v); break;
-            case ProtoKind.SFixed32: o.WriteSFixed32((int) v); break;
-            case ProtoKind.SFixed64: o.WriteSFixed64((long) v); break;
-            case ProtoKind.Bool: o.WriteBool((bool) v); break;
-            case ProtoKind.String: o.WriteString((string) v); break;
-            case ProtoKind.Bytes: o.WriteBytes((ByteString) v); break;
-            case ProtoKind.Enum: o.WriteEnum((int) v); break;
+            case ProtoKind.Double: o.WriteDouble((double)v); break;
+            case ProtoKind.Float: o.WriteFloat((float)v); break;
+            case ProtoKind.Int32: o.WriteInt32((int)v); break;
+            case ProtoKind.Int64: o.WriteInt64((long)v); break;
+            case ProtoKind.UInt32: o.WriteUInt32((uint)v); break;
+            case ProtoKind.UInt64: o.WriteUInt64((ulong)v); break;
+            case ProtoKind.SInt32: o.WriteSInt32((int)v); break;
+            case ProtoKind.SInt64: o.WriteSInt64((long)v); break;
+            case ProtoKind.Fixed32: o.WriteFixed32((uint)v); break;
+            case ProtoKind.Fixed64: o.WriteFixed64((ulong)v); break;
+            case ProtoKind.SFixed32: o.WriteSFixed32((int)v); break;
+            case ProtoKind.SFixed64: o.WriteSFixed64((long)v); break;
+            case ProtoKind.Bool: o.WriteBool((bool)v); break;
+            case ProtoKind.String: o.WriteString((string)v); break;
+            case ProtoKind.Bytes: o.WriteBytes((ByteString)v); break;
+            case ProtoKind.Enum: o.WriteEnum((int)v); break;
             default: throw new InvalidOperationException($"Not a scalar kind: {kind}");
         }
     }
 
-    private static object ReadValue(CodedInputStream i, ProtoKind kind) => kind switch
-    {
+    private static object ReadValue(CodedInputStream i, ProtoKind kind) => kind switch {
         ProtoKind.Double => i.ReadDouble(),
         ProtoKind.Float => i.ReadFloat(),
         ProtoKind.Int32 => i.ReadInt32(),
@@ -436,8 +428,7 @@ public static class ReflectiveEngine
         _ => throw new InvalidOperationException($"Not a scalar kind: {kind}"),
     };
 
-    private static object DefaultOf(ProtoKind kind) => kind switch
-    {
+    private static object DefaultOf(ProtoKind kind) => kind switch {
         ProtoKind.String => "",
         ProtoKind.Bytes => ByteString.Empty,
         ProtoKind.Bool => false,
@@ -461,21 +452,19 @@ public static class ReflectiveEngine
     private static object DecodeWire(FieldDescriptor f, object value) =>
         f.Transform is null ? value : FromLong(f.Kind, f.Transform.Decode(ToLong(f.Kind, value)));
 
-    private static long ToLong(ProtoKind kind, object v) => kind switch
-    {
-        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => (int) v,
-        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => (long) v,
-        ProtoKind.UInt32 or ProtoKind.Fixed32 => (uint) v,
-        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((long) (ulong) v),
+    private static long ToLong(ProtoKind kind, object v) => kind switch {
+        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => (int)v,
+        ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => (long)v,
+        ProtoKind.UInt32 or ProtoKind.Fixed32 => (uint)v,
+        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((long)(ulong)v),
         _ => throw new InvalidOperationException($"Transform not supported for kind: {kind}"),
     };
 
-    private static object FromLong(ProtoKind kind, long v) => kind switch
-    {
-        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => unchecked((int) v),
+    private static object FromLong(ProtoKind kind, long v) => kind switch {
+        ProtoKind.Int32 or ProtoKind.SInt32 or ProtoKind.SFixed32 => unchecked((int)v),
         ProtoKind.Int64 or ProtoKind.SInt64 or ProtoKind.SFixed64 => v,
-        ProtoKind.UInt32 or ProtoKind.Fixed32 => unchecked((uint) v),
-        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((ulong) v),
+        ProtoKind.UInt32 or ProtoKind.Fixed32 => unchecked((uint)v),
+        ProtoKind.UInt64 or ProtoKind.Fixed64 => unchecked((ulong)v),
         _ => throw new InvalidOperationException($"Transform not supported for kind: {kind}"),
     };
 }

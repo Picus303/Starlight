@@ -226,7 +226,7 @@ public sealed class MessageDescriptor
     internal object? GetValue(object msg, FieldDescriptor f)
     {
         if (ClrType is null)
-            return Normalize(f.Kind, ((IDynamicAccessor) msg).Get(f.Name));
+            return Normalize(f.Kind, ((IDynamicAccessor)msg).Get(f.Name));
         var raw = f.Property!.GetValue(msg);
         return Normalize(f.Kind, raw);
     }
@@ -234,21 +234,21 @@ public sealed class MessageDescriptor
     internal void SetValue(object msg, FieldDescriptor f, object? value)
     {
         if (ClrType is null)
-            ((IDynamicAccessor) msg).Set(f.Name, value);
+            ((IDynamicAccessor)msg).Set(f.Name, value);
         else
             f.Property!.SetValue(msg, Coerce(f.Property!.PropertyType, value));
     }
 
     internal IList GetList(object msg, FieldDescriptor f) =>
-        ClrType is null ? ((IDynamicAccessor) msg).GetList(f.Name) : (IList) f.Property!.GetValue(msg)!;
+        ClrType is null ? ((IDynamicAccessor)msg).GetList(f.Name) : (IList)f.Property!.GetValue(msg)!;
 
     internal IDictionary GetMap(object msg, FieldDescriptor f) =>
-        ClrType is null ? ((IDynamicAccessor) msg).GetMap(f.Name) : (IDictionary) f.Property!.GetValue(msg)!;
+        ClrType is null ? ((IDynamicAccessor)msg).GetMap(f.Name) : (IDictionary)f.Property!.GetValue(msg)!;
 
     internal bool OneofActive(object msg, FieldDescriptor f)
     {
         if (ClrType is null)
-            return ((IDynamicAccessor) msg).ActiveOneof(f.OneofName!) == f.BaseNumber;
+            return ((IDynamicAccessor)msg).ActiveOneof(f.OneofName!) == f.BaseNumber;
         var c = f.CaseProperty!.GetValue(msg);
         return c is not null && Convert.ToInt32(c) == f.BaseNumber;
     }
@@ -256,14 +256,14 @@ public sealed class MessageDescriptor
     internal object? GetOneof(object msg, FieldDescriptor f)
     {
         if (ClrType is null)
-            return Normalize(f.Kind, ((IDynamicAccessor) msg).GetOneof(f.OneofName!));
+            return Normalize(f.Kind, ((IDynamicAccessor)msg).GetOneof(f.OneofName!));
         return Normalize(f.Kind, f.Property!.GetValue(msg));
     }
 
     internal void SetOneof(object msg, FieldDescriptor f, object? value)
     {
         if (ClrType is null)
-            ((IDynamicAccessor) msg).SetOneof(f.OneofName!, f.BaseNumber, value);
+            ((IDynamicAccessor)msg).SetOneof(f.OneofName!, f.BaseNumber, value);
         else
             f.Property!.SetValue(msg, Coerce(f.Property!.PropertyType, value));
     }

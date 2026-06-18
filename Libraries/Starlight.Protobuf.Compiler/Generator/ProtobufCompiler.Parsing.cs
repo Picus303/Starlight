@@ -70,8 +70,7 @@ public sealed partial class ProtobufCompiler
                 Index(msg, prefix, map);
         }
 
-        return name =>
-        {
+        return name => {
             var key = name.TrimStart('.');
             return map.TryGetValue(key, out var d) ? d : null;
         };

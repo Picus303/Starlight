@@ -53,7 +53,7 @@ public sealed class RegistrySerializerTests
         byte[] expected = [0x32, 0x03, 0x01, 0x02, 0x03]; // tag, length 3, three 1-byte varints
         Assert.Equal(expected, bytes);
 
-        var restored = (PlayerEnterSceneNotify) Registry.Deserialize(
+        var restored = (PlayerEnterSceneNotify)Registry.Deserialize(
             PlayerEnterSceneNotifyCmdId, new CodedInputStream(bytes));
         Assert.Equal(new uint[] { 1, 2, 3 }, restored.SceneTagIdList);
     }
@@ -61,8 +61,7 @@ public sealed class RegistrySerializerTests
     [Fact]
     public void RoundTrip_GetPlayerTokenReq_PreservesCanonicalFields()
     {
-        var original = new GetPlayerTokenReq
-        {
+        var original = new GetPlayerTokenReq {
             PsnId = "psn",
             Ticket = "tkt",
             OnlineId = "online",
@@ -77,7 +76,7 @@ public sealed class RegistrySerializerTests
         };
 
         var bytes = Registry.Serialize(original);
-        var restored = (GetPlayerTokenReq) Registry.Deserialize(GetPlayerTokenReqCmdId, new CodedInputStream(bytes));
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(GetPlayerTokenReqCmdId, new CodedInputStream(bytes));
 
         Assert.Equal(original.PsnId, restored.PsnId);
         Assert.Equal(original.Ticket, restored.Ticket);
@@ -106,7 +105,7 @@ public sealed class RegistrySerializerTests
         cos.WriteString("psn");
         cos.Flush();
 
-        var restored = (GetPlayerTokenReq) Registry.Deserialize(
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(
             GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
         Assert.Equal("psn", restored.PsnId);
@@ -129,7 +128,7 @@ public sealed class RegistrySerializerTests
         cos.WriteString("psn");
         cos.Flush();
 
-        var restored = (GetPlayerTokenReq) Registry.Deserialize(
+        var restored = (GetPlayerTokenReq)Registry.Deserialize(
             GetPlayerTokenReqCmdId, new CodedInputStream(output.ToArray()));
 
         var json = ProtocolInspector.ToJson(restored);

@@ -9,7 +9,7 @@ public sealed partial class ProtobufCompiler
 {
     private static string EmitRegistry(string version, string baseNs, List<DescriptorProto> messages, Dictionary<string, int> cmdIds)
     {
-        int? Cmd(DescriptorProto m) => cmdIds.TryGetValue(m.Name, out var id) ? id : (int?) null;
+        int? Cmd(DescriptorProto m) => cmdIds.TryGetValue(m.Name, out var id) ? id : (int?)null;
 
         var knownFirstNames = new HashSet<string> { "GetPlayerTokenReq", "PingReq" };
         var knownFirst = messages

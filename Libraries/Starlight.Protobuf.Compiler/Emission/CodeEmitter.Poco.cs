@@ -40,27 +40,22 @@ internal static partial class CodeEmitter
                 var key = entry!.Fields.First(f => f.Number == 1);
                 var val = entry.Fields.First(f => f.Number == 2);
                 sb.AppendLine($"    public global::System.Collections.Generic.Dictionary<{ElemCsType(key, baseNs)}, {ElemCsType(val, baseNs)}> {prop} {{ get; set; }} = new();");
-            }
-            else if (field.label == Label.LabelRepeated)
+            } else if (field.label == Label.LabelRepeated)
             {
                 sb.AppendLine($"    public global::System.Collections.Generic.List<{ElemCsType(field, baseNs)}> {prop} {{ get; set; }} = new();");
-            }
-            else if (field.type == FType.TypeMessage)
+            } else if (field.type == FType.TypeMessage)
             {
                 // message fields already carry presence via null; proto3 `optional` is a no-op here.
                 sb.AppendLine($"    public global::{baseNs}.{Simple(field.TypeName)}? {prop} {{ get; set; }}");
-            }
-            else if (IsProto3Optional(field))
+            } else if (IsProto3Optional(field))
             {
                 // explicit presence: null == absent (even the default value is written when set).
                 var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(field.TypeName)}" : "");
                 sb.AppendLine($"    public {w.CsType}? {prop} {{ get; set; }}");
-            }
-            else
+            } else
             {
                 var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(field.TypeName)}" : "");
-                var init = field.type switch
-                {
+                var init = field.type switch {
                     FType.TypeString => " = \"\";",
                     FType.TypeBytes => " = global::Google.Protobuf.ByteString.Empty;",
                     _ => "",
@@ -114,12 +109,10 @@ internal static partial class CodeEmitter
                 sb.AppendLine($"        get => {caseStore} == {f.Number} ? ({cs}?) {store} : null;");
                 sb.AppendLine($"        set {{ {store} = value; {caseStore} = value == null ? 0 : {f.Number}; }}");
                 sb.AppendLine("    }");
-            }
-            else
+            } else
             {
                 var w = Scalar(f.type, f.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(f.TypeName)}" : "");
-                var def = f.type switch
-                {
+                var def = f.type switch {
                     FType.TypeString => "\"\"",
                     FType.TypeBytes => "global::Google.Protobuf.ByteString.Empty",
                     _ => $"default({w.CsType})",

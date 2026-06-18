@@ -130,8 +130,7 @@ public sealed class CoverageSerializerTests
     [Fact]
     public void Independent_PacketHead_RoundTrips()
     {
-        var original = new PacketHead
-        {
+        var original = new PacketHead {
             ClientSequenceId = 11,
             SentMs = 1717000000000,
             Flags = 6,

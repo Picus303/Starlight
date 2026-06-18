@@ -16,8 +16,7 @@ public sealed class ScalarMatrixTests
 {
     private static readonly ScalarMatrixSerializer Serializer = ScalarMatrixSerializer.Instance;
 
-    private static ScalarMatrix Sample() => new()
-    {
+    private static ScalarMatrix Sample() => new() {
         FInt32 = 123,
         FInt64 = -456,
         FUint32 = 789,

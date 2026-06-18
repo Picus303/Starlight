@@ -107,8 +107,7 @@ public sealed partial class ProtobufCompiler
     private static FieldShape Shape(FieldDescriptorProto f)
     {
         var repeated = f.label == Label.LabelRepeated;
-        return f.type switch
-        {
+        return f.type switch {
             FType.TypeMessage => new FieldShape(f.Name, "message", repeated, CodeEmitter.Simple(f.TypeName)),
             FType.TypeEnum => new FieldShape(f.Name, "enum", repeated, CodeEmitter.Simple(f.TypeName)),
             FType.TypeGroup => new FieldShape(f.Name, "group", repeated, CodeEmitter.Simple(f.TypeName)),
@@ -116,8 +115,7 @@ public sealed partial class ProtobufCompiler
         };
     }
 
-    private static string ProtoKeyword(FType type) => type switch
-    {
+    private static string ProtoKeyword(FType type) => type switch {
         FType.TypeDouble => "double",
         FType.TypeFloat => "float",
         FType.TypeInt64 => "int64",

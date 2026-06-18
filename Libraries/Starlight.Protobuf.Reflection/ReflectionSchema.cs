@@ -46,7 +46,7 @@ public sealed class ReflectionSchema
     public static ReflectionSchema LoadFromDirectory(string directory, string? version = null)
     {
         var sources = Directory.EnumerateFiles(directory, "*.proto")
-            .ToDictionary(Path.GetFileName, File.ReadAllText);
+            .ToDictionary(file => Path.GetFileName(file)!, File.ReadAllText, StringComparer.Ordinal);
         return Load(sources, version);
     }
 
@@ -171,8 +171,7 @@ public sealed class ReflectionSchema
 
     private static bool InRealOneof(ProtoField f) => f.ShouldSerializeOneofIndex() && !f.Proto3Optional;
 
-    private static ProtoKind Kind(FType type) => type switch
-    {
+    private static ProtoKind Kind(FType type) => type switch {
         FType.TypeDouble => ProtoKind.Double,
         FType.TypeFloat => ProtoKind.Float,
         FType.TypeInt64 => ProtoKind.Int64,
@@ -205,8 +204,7 @@ public sealed class ReflectionSchema
                 Index(msg, prefix, map);
         }
 
-        return name =>
-        {
+        return name => {
             var key = name.TrimStart('.');
             return map.TryGetValue(key, out var d) ? d : null;
         };

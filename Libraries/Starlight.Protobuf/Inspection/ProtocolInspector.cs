@@ -91,8 +91,7 @@ public static class ProtocolInspector
                     {
                         if (!desc.OneofActive(message, f)) continue;
                         value = desc.GetOneof(message, f);
-                    }
-                    else
+                    } else
                     {
                         value = desc.GetValue(message, f);
                     }

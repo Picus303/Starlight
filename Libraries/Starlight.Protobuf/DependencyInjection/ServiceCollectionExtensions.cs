@@ -19,8 +19,7 @@ public static class ServiceCollectionExtensions
         var options = new StarlightProtocolOptions();
         configure?.Invoke(options);
 
-        services.AddSingleton<IProtocolRegistryProvider>(_ =>
-        {
+        services.AddSingleton<IProtocolRegistryProvider>(_ => {
             var registries = new List<ProtocolRegistry>(ProtocolHelper.DiscoverRegistries(options.Assemblies));
 
             if (!string.IsNullOrEmpty(options.PluginDirectory))

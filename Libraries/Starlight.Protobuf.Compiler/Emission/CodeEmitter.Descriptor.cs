@@ -68,8 +68,7 @@ internal static partial class CodeEmitter
         {
             rule = "Single";
             named = $", oneofName: \"{OneofName(msg, field)}\"";
-        }
-        else
+        } else
         {
             rule = IsProto3Optional(field) ? "Optional" : "Single";
         }

@@ -24,8 +24,7 @@ public sealed class RemapTests
     private static readonly RemapProbeSerializer Serializer = RemapProbeSerializer.Instance;
     private static MessageDescriptor Descriptor => RemapProbeSerializer.Descriptor;
 
-    private static RemapProbe Sample() => new()
-    {
+    private static RemapProbe Sample() => new() {
         A = 123,
         B = "hello",
         C = -7,
@@ -150,8 +149,7 @@ public sealed class RemapTests
 
         try
         {
-            var serialize = () =>
-            {
+            var serialize = () => {
                 var message = new RemapProbe { A = 123 };
                 while (!token.IsCancellationRequested)
                 {
@@ -165,8 +163,7 @@ public sealed class RemapTests
                 }
             };
 
-            var lookup = () =>
-            {
+            var lookup = () => {
                 while (!token.IsCancellationRequested)
                 {
                     // FindByNumber races the index swap; it must never throw or
@@ -176,8 +173,7 @@ public sealed class RemapTests
                 }
             };
 
-            var remap = () =>
-            {
+            var remap = () => {
                 while (!token.IsCancellationRequested)
                 {
                     Descriptor.Remap("a", 99);
@@ -186,8 +182,7 @@ public sealed class RemapTests
             };
 
             var work = new[] { serialize, serialize, lookup, lookup, remap, remap };
-            var tasks = work.Select(w => Task.Run(() =>
-            {
+            var tasks = work.Select(w => Task.Run(() => {
                 try { w(); }
                 catch (Exception e) { failures.Enqueue(e); }
             }, token)).ToArray();
