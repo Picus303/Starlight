@@ -43,7 +43,7 @@ public sealed partial class ProtobufCompiler
         return set;
     }
 
-    private static readonly string[] TransformOptionNames = { "add", "xor", "fop", "mask" };
+    private static readonly string[] TransformOptionNames = { "add", "xor", "fop", "mask", "alts" };
 
     private static bool IsTransformOptionError(string message)
     {
@@ -83,6 +83,44 @@ public sealed partial class ProtobufCompiler
         map[fq] = d;
         foreach (var nested in d.NestedTypes)
             Index(nested, fq, map);
+    }
+
+    /// <summary>
+    /// Builds the proto-FQ-name -> dotted-C#-path resolver. The proto key carries the package and
+    /// message nesting (matching <see cref="FieldDescriptorProto.TypeName"/>); the C# value drops
+    /// the package and keeps only the message nesting, prefix-stripped per segment.
+    /// </summary>
+    private static CodeEmitter.CsName BuildCsNames(FileDescriptorSet set)
+    {
+        var map = new Dictionary<string, string>();
+        foreach (var file in set.Files)
+        {
+            var prefix = string.IsNullOrEmpty(file.Package) ? "" : file.Package;
+            foreach (var msg in file.MessageTypes)
+                IndexCs(msg, prefix, "", map);
+            foreach (var e in file.EnumTypes)
+                map[string.IsNullOrEmpty(prefix) ? e.Name : $"{prefix}.{e.Name}"] = CodeEmitter.StripPrefix(e.Name);
+        }
+
+        return name =>
+        {
+            var key = name.TrimStart('.');
+            return map.TryGetValue(key, out var v) ? v : null;
+        };
+    }
+
+    private static void IndexCs(DescriptorProto d, string protoPrefix, string csPrefix, Dictionary<string, string> map)
+    {
+        var fq = string.IsNullOrEmpty(protoPrefix) ? d.Name : $"{protoPrefix}.{d.Name}";
+        var cs = string.IsNullOrEmpty(csPrefix) ? CodeEmitter.StripPrefix(d.Name) : $"{csPrefix}.{CodeEmitter.StripPrefix(d.Name)}";
+        map[fq] = cs;
+        // Nested types are emitted inside a `Types` container class (see EmitPoco), so their
+        // dotted C# path gains a `.Types` segment per level of message nesting.
+        var nestedPrefix = $"{cs}.Types";
+        foreach (var nested in d.NestedTypes)
+            IndexCs(nested, fq, nestedPrefix, map);
+        foreach (var e in d.EnumTypes)
+            map[$"{fq}.{e.Name}"] = $"{nestedPrefix}.{CodeEmitter.StripPrefix(e.Name)}";
     }
 
     private static Dictionary<string, int> ScanCmdIds(IEnumerable<Proto> files)

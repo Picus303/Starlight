@@ -7,7 +7,7 @@ public sealed partial class ProtobufCompiler
 {
     private static void EmitTopLevelEnum(StringBuilder sb, EnumDescriptorProto e)
     {
-        sb.AppendLine($"public enum {e.Name}");
+        sb.AppendLine($"public enum {CodeEmitter.StripPrefix(e.Name)}");
         sb.AppendLine("{");
         foreach (var v in e.Values)
             sb.AppendLine($"    {v.Name} = {v.Number},");

@@ -30,7 +30,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("    public override int GetCmdId(global::Starlight.Protobuf.Core.IMessage message) => message switch");
         sb.AppendLine("    {");
         foreach (var m in messages.Where(m => Cmd(m).HasValue))
-            sb.AppendLine($"        global::{baseNs}.{m.Name} => {Cmd(m)!.Value},");
+            sb.AppendLine($"        global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)} => {Cmd(m)!.Value},");
         sb.AppendLine("        _ => 0,");
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -38,7 +38,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("    public override global::Starlight.Protobuf.Core.IMessage Create(int cmdId) => cmdId switch");
         sb.AppendLine("    {");
         foreach (var m in messages.Where(m => Cmd(m).HasValue))
-            sb.AppendLine($"        {Cmd(m)!.Value} => new global::{baseNs}.{m.Name}(),");
+            sb.AppendLine($"        {Cmd(m)!.Value} => new global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)}(),");
         sb.AppendLine($"        _ => throw new global::System.ArgumentOutOfRangeException(nameof(cmdId), cmdId, \"Unknown CmdId for {version}.\"),");
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -46,7 +46,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("    public override int CalculateSize(global::Starlight.Protobuf.Core.IMessage message) => message switch");
         sb.AppendLine("    {");
         foreach (var m in messages)
-            sb.AppendLine($"        global::{baseNs}.{m.Name} v => {m.Name}Serializer.Instance.CalculateSize(v),");
+            sb.AppendLine($"        global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)} v => {CodeEmitter.StripPrefix(m.Name)}Serializer.Instance.CalculateSize(v),");
         sb.AppendLine("        _ => 0,");
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -56,7 +56,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("        switch (message)");
         sb.AppendLine("        {");
         foreach (var m in messages)
-            sb.AppendLine($"            case global::{baseNs}.{m.Name} v: {m.Name}Serializer.Instance.Serialize(v, output); break;");
+            sb.AppendLine($"            case global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)} v: {CodeEmitter.StripPrefix(m.Name)}Serializer.Instance.Serialize(v, output); break;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
@@ -66,7 +66,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("        switch (message)");
         sb.AppendLine("        {");
         foreach (var m in messages)
-            sb.AppendLine($"            case global::{baseNs}.{m.Name} v: {m.Name}Serializer.Instance.Deserialize(v, input); break;");
+            sb.AppendLine($"            case global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)} v: {CodeEmitter.StripPrefix(m.Name)}Serializer.Instance.Deserialize(v, input); break;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
@@ -75,14 +75,14 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("        new global::Starlight.Protobuf.Core.MessageDescriptor[]");
         sb.AppendLine("        {");
         foreach (var m in messages)
-            sb.AppendLine($"            {m.Name}Serializer.Descriptor,");
+            sb.AppendLine($"            {CodeEmitter.StripPrefix(m.Name)}Serializer.Descriptor,");
         sb.AppendLine("        };");
         sb.AppendLine();
 
         sb.AppendLine("    public override global::Starlight.Protobuf.Core.MessageDescriptor? GetDescriptor(int cmdId) => cmdId switch");
         sb.AppendLine("    {");
         foreach (var m in messages.Where(m => Cmd(m).HasValue))
-            sb.AppendLine($"        {Cmd(m)!.Value} => {m.Name}Serializer.Descriptor,");
+            sb.AppendLine($"        {Cmd(m)!.Value} => {CodeEmitter.StripPrefix(m.Name)}Serializer.Descriptor,");
         sb.AppendLine("        _ => null,");
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -90,7 +90,7 @@ public sealed partial class ProtobufCompiler
         sb.AppendLine("    public override global::Starlight.Protobuf.Core.MessageDescriptor? GetDescriptor(global::System.Type messageType)");
         sb.AppendLine("    {");
         foreach (var m in messages)
-            sb.AppendLine($"        if (messageType == typeof(global::{baseNs}.{m.Name})) return {m.Name}Serializer.Descriptor;");
+            sb.AppendLine($"        if (messageType == typeof(global::{baseNs}.{CodeEmitter.StripPrefix(m.Name)})) return {CodeEmitter.StripPrefix(m.Name)}Serializer.Descriptor;");
         sb.AppendLine("        return null;");
         sb.AppendLine("    }");
         sb.AppendLine("}");
