@@ -12,9 +12,12 @@ internal static partial class CodeEmitter
 
     /// <param name="baseMsg">canonical message (drives POCO type + field types/names)</param>
     /// <param name="versionMsg">version dump message (drives real wire field numbers)</param>
-    public static void EmitSerializer(StringBuilder sb, DescriptorProto baseMsg, DescriptorProto versionMsg, string baseNs, Resolver resolveBase, TransformTable? transforms = null)
+    public static void EmitSerializer(StringBuilder sb, DescriptorProto baseMsg, DescriptorProto versionMsg, string baseNs, Resolver resolveBase, CsName csNames, TransformTable? transforms = null, AltsTable? alts = null, string? csPath = null)
     {
-        var versionByName = versionMsg.Fields.ToDictionary(f => f.Name, f => f.Number);
+        var versionByName = FieldsByName(versionMsg.Fields);
+        var leaf = StripPrefix(baseMsg.Name);
+        csPath ??= leaf;
+        var serBase = SerBase(csPath);
 
         var size = new StringBuilder();
         var write = new StringBuilder();
@@ -22,20 +25,23 @@ internal static partial class CodeEmitter
 
         foreach (var field in baseMsg.Fields)
         {
-            if (!versionByName.TryGetValue(field.Name, out var number))
-                continue; // canonical field absent in this version -> not serialized
+            if (IsUnknownPlaceholder(field)) continue; // unknown placeholder -> round-trips via UnknownFields
+            var vf = MatchVersionField(field, baseMsg.Name, versionByName, alts);
+            if (vf is null) continue; // canonical field absent in this version -> not serialized
 
             var oneofName = InRealOneof(field) ? OneofName(baseMsg, field) : null;
-            var transform = transforms?.Get(versionMsg.Name, field.Name);
-            EmitField(field, number, baseMsg.Name, baseNs, resolveBase, size, write, read, oneofName, transform);
+            // Transforms are authored on the version proto and keyed by the *version* field
+            // name, which differs from the base name when matched through an alt.
+            var transform = transforms?.Get(versionMsg.Name, vf.Name);
+            EmitField(field, vf.Number, leaf, csPath, baseNs, resolveBase, csNames, size, write, read, oneofName, transform);
         }
 
-        var type = $"global::{baseNs}.{baseMsg.Name}";
-        sb.AppendLine($"public sealed class {baseMsg.Name}Serializer : global::Starlight.Protobuf.Core.ISerializer<{type}>");
+        var type = $"global::{baseNs}.{csPath}";
+        sb.AppendLine($"public sealed class {serBase}Serializer : global::Starlight.Protobuf.Core.ISerializer<{type}>");
         sb.AppendLine("{");
-        sb.AppendLine($"    public static readonly {baseMsg.Name}Serializer Instance = new();");
+        sb.AppendLine($"    public static readonly {serBase}Serializer Instance = new();");
         sb.AppendLine();
-        EmitDescriptor(sb, baseMsg, versionMsg, baseNs, resolveBase, transforms);
+        EmitDescriptor(sb, baseMsg, versionMsg, baseNs, resolveBase, csNames, transforms, alts, csPath);
         sb.AppendLine($"    public int CalculateSize({type} m)");
         sb.AppendLine("    {");
         sb.AppendLine("        if (Descriptor.HasRemaps) return global::Starlight.Protobuf.Serialization.ReflectiveEngine.CalculateSize(Descriptor, m);");
@@ -69,21 +75,21 @@ internal static partial class CodeEmitter
         sb.AppendLine("}");
     }
 
-    private static void EmitField(FieldDescriptorProto field, int number, string msgName, string baseNs, Resolver resolve,
+    private static void EmitField(FieldDescriptorProto field, int number, string leaf, string ownerPath, string baseNs, Resolver resolve, CsName csNames,
         StringBuilder size, StringBuilder write, StringBuilder read, string? oneofName = null, Transform? transform = null)
     {
-        var prop = Prop(field.Name, msgName);
+        var prop = Prop(field.Name, leaf);
         var acc = $"m.{prop}";
 
         if (IsMap(field, resolve, out var entry))
         {
-            EmitMap(field, number, msgName, baseNs, entry!, size, write, read);
+            EmitMap(field, number, leaf, baseNs, entry!, csNames, size, write, read);
             return;
         }
 
         if (field.label == Label.LabelRepeated)
         {
-            EmitRepeated(field, number, msgName, baseNs, size, write, read);
+            EmitRepeated(field, number, leaf, baseNs, csNames, size, write, read);
             return;
         }
 
@@ -92,26 +98,27 @@ internal static partial class CodeEmitter
             // Both plain and oneof message fields carry presence via null: a oneof
             // message getter returns null unless its case is active, so the null
             // check below doubles as the case guard.
-            var msgType = Simple(field.TypeName);
+            var msgType = TypePath(field.TypeName, csNames);
+            var ser = SerBase(msgType);
             var tag = TagLen(number, 2);
             // size
             size.AppendLine($"        if ({acc} != null)");
             size.AppendLine("        {");
-            size.AppendLine($"            int s = {msgType}Serializer.Instance.CalculateSize({acc});");
+            size.AppendLine($"            int s = {ser}Serializer.Instance.CalculateSize({acc});");
             size.AppendLine($"            size += {tag} + global::Google.Protobuf.CodedOutputStream.ComputeLengthSize(s) + s;");
             size.AppendLine("        }");
             // write
             write.AppendLine($"        if ({acc} != null)");
             write.AppendLine("        {");
             write.AppendLine($"            {RawTag(number, 2)};");
-            write.AppendLine($"            output.WriteLength({msgType}Serializer.Instance.CalculateSize({acc}));");
-            write.AppendLine($"            {msgType}Serializer.Instance.Serialize({acc}, output);");
+            write.AppendLine($"            output.WriteLength({ser}Serializer.Instance.CalculateSize({acc}));");
+            write.AppendLine($"            {ser}Serializer.Instance.Serialize({acc}, output);");
             write.AppendLine("        }");
             // read
             read.AppendLine($"                case {TagValue(number, 2)}:");
             read.AppendLine("                {");
             read.AppendLine($"                    var sub = new global::{baseNs}.{msgType}();");
-            read.AppendLine($"                    {msgType}Serializer.Instance.Deserialize(sub, input.ReadBytes().CreateCodedInput());");
+            read.AppendLine($"                    {ser}Serializer.Instance.Deserialize(sub, input.ReadBytes().CreateCodedInput());");
             read.AppendLine($"                    {acc} = sub;");
             read.AppendLine("                    break;");
             read.AppendLine("                }");
@@ -119,7 +126,7 @@ internal static partial class CodeEmitter
         }
 
         // singular scalar / enum / string / bytes / bool
-        var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(field.TypeName)}" : "");
+        var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{TypePath(field.TypeName, csNames)}" : "");
         var tagLen = TagLen(number, w.WireType);
 
         // Presence guard + the expression carrying the value to write/size:
@@ -129,7 +136,7 @@ internal static partial class CodeEmitter
         string guard, valueAcc = acc;
         if (oneofName != null)
         {
-            guard = $"m.{oneofName}Case == global::{baseNs}.{msgName}.{oneofName}OneofCase.{Pascal(field.Name)}";
+            guard = $"m.{oneofName}Case == global::{baseNs}.{ownerPath}.{oneofName}OneofCase.{Pascal(field.Name)}";
         }
         else if (IsProto3Optional(field))
         {
@@ -157,38 +164,39 @@ internal static partial class CodeEmitter
         read.AppendLine("                    break;");
     }
 
-    private static void EmitRepeated(FieldDescriptorProto field, int number, string msgName, string baseNs,
+    private static void EmitRepeated(FieldDescriptorProto field, int number, string leaf, string baseNs, CsName csNames,
         StringBuilder size, StringBuilder write, StringBuilder read)
     {
-        var prop = Prop(field.Name, msgName);
+        var prop = Prop(field.Name, leaf);
         var acc = $"m.{prop}";
 
         if (field.type == FType.TypeMessage)
         {
-            var msgType = Simple(field.TypeName);
+            var msgType = TypePath(field.TypeName, csNames);
+            var ser = SerBase(msgType);
             var tag = TagLen(number, 2);
             size.AppendLine($"        foreach (var v in {acc})");
             size.AppendLine("        {");
-            size.AppendLine($"            int s = {msgType}Serializer.Instance.CalculateSize(v);");
+            size.AppendLine($"            int s = {ser}Serializer.Instance.CalculateSize(v);");
             size.AppendLine($"            size += {tag} + global::Google.Protobuf.CodedOutputStream.ComputeLengthSize(s) + s;");
             size.AppendLine("        }");
             write.AppendLine($"        foreach (var v in {acc})");
             write.AppendLine("        {");
             write.AppendLine($"            {RawTag(number, 2)};");
-            write.AppendLine($"            output.WriteLength({msgType}Serializer.Instance.CalculateSize(v));");
-            write.AppendLine($"            {msgType}Serializer.Instance.Serialize(v, output);");
+            write.AppendLine($"            output.WriteLength({ser}Serializer.Instance.CalculateSize(v));");
+            write.AppendLine($"            {ser}Serializer.Instance.Serialize(v, output);");
             write.AppendLine("        }");
             read.AppendLine($"                case {TagValue(number, 2)}:");
             read.AppendLine("                {");
             read.AppendLine($"                    var sub = new global::{baseNs}.{msgType}();");
-            read.AppendLine($"                    {msgType}Serializer.Instance.Deserialize(sub, input.ReadBytes().CreateCodedInput());");
+            read.AppendLine($"                    {ser}Serializer.Instance.Deserialize(sub, input.ReadBytes().CreateCodedInput());");
             read.AppendLine($"                    {acc}.Add(sub);");
             read.AppendLine("                    break;");
             read.AppendLine("                }");
             return;
         }
 
-        var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(field.TypeName)}" : "");
+        var w = Scalar(field.type, field.type == FType.TypeEnum ? $"global::{baseNs}.{TypePath(field.TypeName, csNames)}" : "");
 
         // string/bytes are length-delimited and never packed
         if (field.type is FType.TypeString or FType.TypeBytes)
@@ -235,16 +243,16 @@ internal static partial class CodeEmitter
         read.AppendLine("                    break;");
     }
 
-    private static void EmitMap(FieldDescriptorProto field, int number, string msgName, string baseNs, DescriptorProto entry,
+    private static void EmitMap(FieldDescriptorProto field, int number, string leaf, string baseNs, DescriptorProto entry, CsName csNames,
         StringBuilder size, StringBuilder write, StringBuilder read)
     {
-        var prop = Prop(field.Name, msgName);
+        var prop = Prop(field.Name, leaf);
         var acc = $"m.{prop}";
         var keyField = entry.Fields.First(f => f.Number == 1);
         var valField = entry.Fields.First(f => f.Number == 2);
         var kw = Scalar(keyField.type, "");
         var valIsMessage = valField.type == FType.TypeMessage;
-        var vw = valIsMessage ? null : Scalar(valField.type, valField.type == FType.TypeEnum ? $"global::{baseNs}.{Simple(valField.TypeName)}" : "");
+        var vw = valIsMessage ? null : Scalar(valField.type, valField.type == FType.TypeEnum ? $"global::{baseNs}.{TypePath(valField.TypeName, csNames)}" : "");
         var fieldTagLen = TagLen(number, 2);
         var keyTagLen = TagLen(1, kw.WireType);
         var valWire = valIsMessage ? 2 : vw!.WireType;
@@ -254,8 +262,8 @@ internal static partial class CodeEmitter
         string valSizeExpr;
         if (valIsMessage)
         {
-            var msgType = Simple(valField.TypeName);
-            valSizeExpr = $"global::Google.Protobuf.CodedOutputStream.ComputeLengthSize({msgType}Serializer.Instance.CalculateSize(kv.Value)) + {msgType}Serializer.Instance.CalculateSize(kv.Value)";
+            var ser = SerBase(TypePath(valField.TypeName, csNames));
+            valSizeExpr = $"global::Google.Protobuf.CodedOutputStream.ComputeLengthSize({ser}Serializer.Instance.CalculateSize(kv.Value)) + {ser}Serializer.Instance.CalculateSize(kv.Value)";
         }
         else
         {
@@ -279,10 +287,10 @@ internal static partial class CodeEmitter
         write.AppendLine($"            {WriteCall(kw, "kv.Key")};");
         if (valIsMessage)
         {
-            var msgType = Simple(valField.TypeName);
+            var ser = SerBase(TypePath(valField.TypeName, csNames));
             write.AppendLine($"            {RawTag(2, 2)};");
-            write.AppendLine($"            output.WriteLength({msgType}Serializer.Instance.CalculateSize(kv.Value));");
-            write.AppendLine($"            {msgType}Serializer.Instance.Serialize(kv.Value, output);");
+            write.AppendLine($"            output.WriteLength({ser}Serializer.Instance.CalculateSize(kv.Value));");
+            write.AppendLine($"            {ser}Serializer.Instance.Serialize(kv.Value, output);");
         }
         else
         {
@@ -293,9 +301,9 @@ internal static partial class CodeEmitter
         write.AppendLine("        }");
 
         // read
-        var keyCs = ElemCsType(keyField, baseNs);
-        var valCs = ElemCsType(valField, baseNs);
-        var keyInit = keyField.type == FType.TypeString ? " = \"\"" : keyField.type == FType.TypeBytes ? " = global::Google.Protobuf.ByteString.Empty" : "";
+        var keyCs = ElemCsType(keyField, baseNs, csNames);
+        var valCs = ElemCsType(valField, baseNs, csNames);
+        var keyInit = keyField.type == FType.TypeString ? " = \"\"" : keyField.type == FType.TypeBytes ? " = global::Google.Protobuf.ByteString.Empty" : " = default";
         string valInit;
         if (valIsMessage) valInit = $" = new {valCs}()";
         else if (valField.type == FType.TypeString) valInit = " = \"\"";
@@ -305,7 +313,7 @@ internal static partial class CodeEmitter
         read.AppendLine($"                case {TagValue(number, 2)}:");
         read.AppendLine("                {");
         read.AppendLine("                    var ci = input.ReadBytes().CreateCodedInput();");
-        read.AppendLine($"                    {keyCs} k = default{keyInit};");
+        read.AppendLine($"                    {keyCs} k{keyInit};");
         read.AppendLine($"                    {valCs} v{valInit};");
         read.AppendLine("                    uint t;");
         read.AppendLine("                    while ((t = ci.ReadTag()) != 0)");
@@ -318,9 +326,10 @@ internal static partial class CodeEmitter
         read.AppendLine($"                            case {TagValue(2, valWire)}:");
         if (valIsMessage)
         {
-            var msgType = Simple(valField.TypeName);
+            var msgType = TypePath(valField.TypeName, csNames);
+            var ser = SerBase(msgType);
             read.AppendLine($"                                v = new global::{baseNs}.{msgType}();");
-            read.AppendLine($"                                {msgType}Serializer.Instance.Deserialize(v, ci.ReadBytes().CreateCodedInput());");
+            read.AppendLine($"                                {ser}Serializer.Instance.Deserialize(v, ci.ReadBytes().CreateCodedInput());");
         }
         else
         {

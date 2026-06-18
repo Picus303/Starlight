@@ -20,26 +20,28 @@ internal static partial class CodeEmitter
     /// path; nested message references are lazy (<c>() =&gt; XSerializer.Descriptor</c>)
     /// to sidestep static-init ordering.
     /// </summary>
-    private static void EmitDescriptor(StringBuilder sb, DescriptorProto baseMsg, DescriptorProto versionMsg, string baseNs, Resolver resolve, TransformTable? transforms)
+    private static void EmitDescriptor(StringBuilder sb, DescriptorProto baseMsg, DescriptorProto versionMsg, string baseNs, Resolver resolve, CsName csNames, TransformTable? transforms, AltsTable? alts = null, string? csPath = null)
     {
-        var versionByName = versionMsg.Fields.ToDictionary(f => f.Name, f => f.Number);
-        var type = $"global::{baseNs}.{baseMsg.Name}";
+        var versionByName = FieldsByName(versionMsg.Fields);
+        var type = $"global::{baseNs}.{csPath ?? StripPrefix(baseMsg.Name)}";
 
         sb.AppendLine($"    public static readonly global::Starlight.Protobuf.Core.MessageDescriptor Descriptor =");
         sb.AppendLine($"        new global::Starlight.Protobuf.Core.MessageDescriptor(\"{baseMsg.Name}\", typeof({type}), new {FdType}[]");
         sb.AppendLine("        {");
         foreach (var field in baseMsg.Fields)
         {
-            if (!versionByName.TryGetValue(field.Name, out var number)) continue;
-            var transform = transforms?.Get(versionMsg.Name, field.Name);
-            sb.AppendLine($"            {FieldDescriptorExpr(field, number, baseMsg, resolve, transform)},");
+            if (IsUnknownPlaceholder(field)) continue; // unknown placeholder -> round-trips via UnknownFields
+            var vf = MatchVersionField(field, baseMsg.Name, versionByName, alts);
+            if (vf is null) continue;
+            var transform = transforms?.Get(versionMsg.Name, vf.Name);
+            sb.AppendLine($"            {FieldDescriptorExpr(field, vf.Number, baseMsg, resolve, csNames, transform)},");
         }
 
         sb.AppendLine("        });");
         sb.AppendLine();
     }
 
-    private static string FieldDescriptorExpr(FieldDescriptorProto field, int number, DescriptorProto msg, Resolver resolve, Transform? transform = null)
+    private static string FieldDescriptorExpr(FieldDescriptorProto field, int number, DescriptorProto msg, Resolver resolve, CsName csNames, Transform? transform = null)
     {
         var prop = Prop(field.Name, msg.Name);
         var head = $"new {FdType}(\"{field.Name}\", \"{prop}\", {field.Number}, {number}";
@@ -50,14 +52,14 @@ internal static partial class CodeEmitter
             var valField = entry.Fields.First(f => f.Number == 2);
             var extra = $", keyKind: {PkType}.{Kind(keyField.type)}";
             if (valField.type == FType.TypeMessage)
-                extra += $", messageRef: () => {Simple(valField.TypeName)}Serializer.Descriptor";
+                extra += $", messageRef: () => {SerBase(TypePath(valField.TypeName, csNames))}Serializer.Descriptor";
             return $"{head}, {PkType}.{Kind(valField.type)}, {FrType}.Map{extra})";
         }
 
         if (field.label == Label.LabelRepeated)
         {
             var extra = field.type == FType.TypeMessage
-                ? $", messageRef: () => {Simple(field.TypeName)}Serializer.Descriptor"
+                ? $", messageRef: () => {SerBase(TypePath(field.TypeName, csNames))}Serializer.Descriptor"
                 : "";
             return $"{head}, {PkType}.{Kind(field.type)}, {FrType}.Repeated{extra})";
         }
@@ -75,7 +77,7 @@ internal static partial class CodeEmitter
         }
 
         if (field.type == FType.TypeMessage)
-            named += $", messageRef: () => {Simple(field.TypeName)}Serializer.Descriptor";
+            named += $", messageRef: () => {SerBase(TypePath(field.TypeName, csNames))}Serializer.Descriptor";
 
         // Every surviving transform is an invertible op-chain (add/xor/fop and parseable
         // masks); non-invertible masks are rejected at compile time, so the reflective

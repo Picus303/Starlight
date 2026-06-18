@@ -101,10 +101,10 @@ internal static partial class CodeEmitter
         return false;
     }
 
-    private static string ElemCsType(FieldDescriptorProto field, string baseNs)
+    private static string ElemCsType(FieldDescriptorProto field, string baseNs, CsName csNames)
     {
-        if (field.type == FType.TypeMessage) return $"global::{baseNs}.{Simple(field.TypeName)}";
-        if (field.type == FType.TypeEnum) return $"global::{baseNs}.{Simple(field.TypeName)}";
+        if (field.type == FType.TypeMessage) return $"global::{baseNs}.{TypePath(field.TypeName, csNames)}";
+        if (field.type == FType.TypeEnum) return $"global::{baseNs}.{TypePath(field.TypeName, csNames)}";
         return Scalar(field.type, "").CsType;
     }
 
